@@ -1,0 +1,18 @@
+from pydantic import BaseModel, Field
+
+
+class DatasetConfig(BaseModel):
+
+    # Duplicate handling
+    duplicate_policy: str = "quarantine"
+
+    # Blur configuration
+    blur_threshold: float = 60.0
+
+    # Resolution configuration
+    min_width: int = 224
+    min_height: int = 224
+
+    # Train/test configuration
+    create_split: bool = False
+    train_ratio: float = Field(default=0.8, gt=0, lt=1)
