@@ -1,86 +1,38 @@
-# =========================
-# Python
-# =========================
+# Virtual Environment
+.venv/
+venv/
+env/
 
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Python build / packaging
-build/
-dist/
-*.egg-info/
-.eggs/
-
-# =========================
-# Virtual environments
-# =========================
-
-.venv/
-venv/
-env/
-ENV/
-
-# =========================
-# Testing / coverage
-# =========================
-
+# Pytest
 .pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
 
-# =========================
-# Type checkers / linters
-# =========================
-
-.mypy_cache/
-.pyre/
-.ruff_cache/
-
-# =========================
-# IDE / editor files
-# =========================
-
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
-
-# =========================
-# Project-generated files
-# =========================
-
+# Generated output
 output/
 
-# =========================
-# Local / raw data
-# =========================
-# Uncomment these if data/ contains
-# datasets that should NOT be committed.
+# IDE / Editor
+.vscode/
+.idea/
 
-data/
+# OS files
+.DS_Store
 
-# =========================
-# Environment / secrets
-# =========================
-
+# Environment variables / secrets
 .env
 .env.*
-!.env.example
 
-# =========================
+# Python packaging
+*.egg-info/
+dist/
+build/
+
 # Logs
-# =========================
-
 *.log
 
-# =========================
-# OS files
-# =========================
-
-Thumbs.db
-.DS_Store
+# Data
+# Uncomment this if your data/ folder contains large/private datasets
+data/
