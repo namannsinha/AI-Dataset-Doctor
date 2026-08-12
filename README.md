@@ -1,30 +1,29 @@
-AI Dataset Doctor
+# AI Dataset Doctor
 
-AI Dataset Doctor is an image-dataset quality auditing and cleaning engine designed to identify dataset problems, explain findings, and safely prepare a cleaner dataset.
+AI Dataset Doctor is an image dataset quality analysis and cleaning tool.
 
-Current scope: Backend-only development. Frontend is postponed.
+It checks an image dataset for common problems, reports the findings, and can safely quarantine problematic images based on user-defined actions.
 
-Project Vision
+## Current Scope
 
-The long-term goal is to build a dataset "doctor" that can inspect an image dataset, identify quality and data problems, recommend actions, safely quarantine problematic files, and eventually use AI for semantic dataset analysis.
+We are currently building the backend only.
 
-The system is intended to evolve from a local V1 tool into a scalable architecture capable of processing very large datasets.
+Version 1 focuses on image datasets.
 
-Current V1 Scope
+### Supported Dataset Structures
 
-V1 focuses on image datasets.
+#### 1. Flat Dataset
 
-Supported dataset structures
-
-Flat
-
+```text
 dataset/
 ├── image1.jpg
 ├── image2.jpg
 └── image3.jpg
+```
 
-Class-separated
+#### 2. Class-Separated Dataset
 
+```text
 dataset/
 ├── cat/
 │   ├── cat1.jpg
@@ -32,9 +31,11 @@ dataset/
 └── dog/
     ├── dog1.jpg
     └── dog2.jpg
+```
 
-Train/validation/test
+#### 3. Train/Test Dataset
 
+```text
 dataset/
 ├── train/
 │   ├── cat/
@@ -45,318 +46,199 @@ dataset/
 └── test/
     ├── cat/
     └── dog/
+```
 
-Flat-dataset clustering is intentionally postponed to a future version.
+Clustering of flat datasets is planned for a future version.
 
-Architecture Built So Far
+---
 
-Dataset
-   │
-   ▼
-FolderParser
-   │
-   ▼
-Dataset / ImageRecords
-   │
-   ▼
-WorkingDataset
-   │
-   ▼
-Pipeline
-   │
-   ├── Corruption Analyzer
-   ├── Duplicate Analyzer
-   ├── Blur Analyzer
-   └── Resolution Analyzer
-   │
-   ▼
-AnalysisResult / Findings
-   │
-   ▼
-ActionPolicy
-   ├── FLAG
-   ├── QUARANTINE
-   └── IGNORE
-   │
-   ▼
-QuarantineManager
-   │
-   ▼
-Updated WorkingDataset
+## What We Have Built
 
-Core architectural decisions
+### Dataset Models
 
-Analyzers detect problems; they do not directly delete or move files.
+Created models for:
 
-ActionPolicy decides whether a finding is flagged, quarantined, or ignored.
+- Dataset
+- ImageRecord
+- Finding
+- AnalysisResult
+- DatasetConfig
+- DatasetType
+- Action
 
-WorkingDataset represents the currently active dataset state.
+### Folder Parser
 
-The current V1 pipeline is sequential so quarantined images are unavailable to later analyzers.
+The folder parser:
 
-The architecture is being reconsidered for batch-based and parallel processing before scaling to very large datasets.
+- Validates the dataset path
+- Finds supported image files recursively
+- Detects dataset structure
+- Detects classes
+- Detects train/validation/test splits
+- Reads image metadata
+- Creates ImageRecord objects
 
-Components Completed
+Supported formats:
 
-1. Dataset Models
+- JPG
+- JPEG
+- PNG
+- BMP
+- WEBP
+- TIFF
+- TIF
 
-Core structured models include:
+### Working Dataset
 
-Dataset
+`WorkingDataset` keeps track of the images that are currently active.
 
-ImageRecord
-
-Finding
-
-AnalysisResult
-
-DatasetConfig
-
-DatasetType
-
-Action
-
-quarantine-related records
-
-ImageRecord stores information such as:
-
-image ID
-
-path
-
-original path
-
-filename
-
-label
-
-split
-
-width
-
-height
-
-format
-
-file size
-
-2. Folder Parser
-
-The FolderParser:
-
-validates the dataset directory
-
-recursively finds supported image files
-
-detects dataset folder structure
-
-extracts labels and train/validation/test splits
-
-extracts image metadata
-
-creates ImageRecord objects
-
-creates the initial Dataset
-
-Supported image extensions:
-
-JPG
-JPEG
-PNG
-BMP
-WEBP
-TIFF
-TIF
-
-The parser intentionally does not fail the entire dataset when an image cannot be opened. Such files can later be identified by the corruption analyzer.
-
-3. WorkingDataset
-
-WorkingDataset represents the currently active dataset state.
 Example:
 
+```text
 1000 images
    ↓
-20 quarantined
+20 images quarantined
    ↓
 980 active images
+```
 
-The next analyzer works on the updated state.
+The next processing step works with the updated dataset state.
 
-4. Base Analyzer Architecture
-All analyzers follow a common BaseAnalyzer interface.
-Each analyzer provides:
+### Analyzer System
 
-a unique name
-an analyze() method
-standardized AnalysisResult output
+All analyzers follow a common `BaseAnalyzer` structure.
 
-This allows new analyzers to be added without rewriting the entire pipeline.
+Currently implemented:
 
-Analyzers Completed
+- Corruption Analyzer
+- Exact Duplicate Analyzer
+- Blur Analyzer
+- Resolution Analyzer
 
-5. Corruption Analyzer
-Purpose: Detect images that cannot be correctly opened or verified.
-Technology: Pillow
+### Corruption Detection
 
-Image
-  ↓
-Pillow
-  ↓
-Open / Verify
-  ↓
-Valid or Corrupted
+Uses Pillow to check whether images can be opened and processed correctly.
 
-6. Exact Duplicate Analyzer
-Purpose: Detect files with identical contents.
-Technology: SHA-256 hashing
-Example:
+### Exact Duplicate Detection
 
-image1.jpg → HASH_A
-image2.jpg → HASH_A
-image3.jpg → HASH_B
+Uses SHA-256 file hashes.
 
-image1.jpg and image2.jpg are exact duplicates.
+Two files with the same content produce the same hash and are treated as exact duplicates.
 
-Current limitation: SHA-256 does not detect visually identical images that were resized, recompressed, cropped, or otherwise modified. Near-duplicate detection is planned later.
+Near-duplicate detection is not implemented yet.
 
-7. Blur Analyzer
-Purpose: Detect potentially blurry images.
-Technology: OpenCV
-Variance of Laplacian
+### Blur Detection
 
-Image
-  ↓
-Grayscale
-  ↓
-Laplacian
-  ↓
-Variance
-  ↓
-Blur / sharpness score
+Uses OpenCV and the Variance of Laplacian method to estimate image sharpness.
 
-The threshold is configurable through DatasetConfig.
+### Resolution Detection
 
-8. Resolution Analyzer
-Purpose: Detect images below configured minimum width and height.
-Example:
-Minimum: 224 × 224
+Checks image width and height against configured minimum values.
 
-512 × 512 → Pass
-224 × 224 → Pass
-128 × 128 → Finding
+---
 
-It uses dimensions already extracted by the parser.
+## Action System
 
-Action and Cleaning System
+The user decides what happens when an issue is detected.
 
-9. ActionPolicy
-The user can decide what happens when an analyzer finds a problem:
+Available actions:
 
-FLAG
-QUARANTINE
-IGNORE
+- FLAG
+- QUARANTINE
+- IGNORE
 
-Example:
+For example:
 
+```text
 Duplicate → FLAG
 Blur → QUARANTINE
 Resolution → IGNORE
+```
 
-This separates detection from remediation.
+Analyzers only create findings. They do not directly delete files.
 
-10. QuarantineManager
-Files are not permanently deleted.
-When configured for quarantine, a file is moved to an issue-specific location:
+---
 
+## Quarantine System
+
+Images are not permanently deleted.
+
+When the action is `QUARANTINE`, the image is moved into a separate folder based on the issue.
+
+Example:
+
+```text
 output/
 └── Quarantine/
     ├── corruption/
     ├── duplicate/
     ├── blur/
     └── resolution/
+```
 
-This makes cleaning reversible and allows inspection of removed files.
+This allows the user to review removed images later.
 
-Pipeline
-The current pipeline executes analyzers sequentially:
+---
 
-1000 images
-    ↓
+## Current Pipeline
+
+The current pipeline processes analyzers sequentially.
+
+```text
+Dataset
+   ↓
 Corruption
-    ↓
-980 images
-    ↓
+   ↓
 Duplicate
-    ↓
-950 images
-    ↓
+   ↓
 Blur
-    ↓
-930 images
-    ↓
+   ↓
 Resolution
+   ↓
+Output
+```
 
-This was intentionally designed so quarantined images are removed from the active WorkingDataset before later analyzers run.
+The important part is that quarantined images are removed from the active `WorkingDataset`, so later analyzers work on the remaining images.
 
-Testing
-The project contains automated unit and integration tests.
-Tests use controlled/synthetic data to verify known expected behavior.
-For example:
+---
 
-image1 = duplicate
-image2 = duplicate
-image3 = unique
+## Testing
 
-Expected:
-1 duplicate finding
+Automated tests have been created for the core components.
 
-Tests cover:
+Tests currently cover:
 
-parser behavior
+- Models
+- Folder parser
+- Working dataset
+- Finding system
+- Hashing
+- Corruption analyzer
+- Analyzer runner
+- Action policy
+- Quarantine
+- Pipeline
+- Blur
+- Resolution
+- Duplicate detection
 
-dataset representation
+We use controlled test data instead of relying only on real datasets.
 
-WorkingDataset updates
+The purpose is to verify that each component behaves correctly and that changes do not break existing functionality.
 
-analyzer behavior
+Real datasets will be used later for algorithm validation.
 
-findings
+---
 
-pipeline sequencing
+# Scalability
 
-FLAG behavior
+A major architectural concern identified during development is scalability.
 
-QUARANTINE behavior
+The current sequential pipeline works for smaller datasets, but users may eventually provide hundreds of thousands or millions of images.
 
-IGNORE behavior
+We therefore plan to move toward:
 
-physical quarantine operations
-
-blur detection
-
-resolution detection
-
-duplicate detection
-
-Automated tests answer:
-
-"Does the implementation behave correctly according to the specification?"
-
-Real datasets will later answer:
-
-"Does the algorithm work effectively in real-world conditions?"
-
-Both are required.
-
-Scalability Architecture — Planned Revision
-
-A scalability concern has been identified: users may eventually provide millions of images.
-
-The current approach should therefore evolve from processing the entire dataset as one in-memory working object toward batch-based processing.
-
-Planned direction
-
+```text
 Dataset
    ↓
 Parser
@@ -365,244 +247,218 @@ Batch Manager
    ↓
 Image Batches
    ↓
-Parallel Independent Analyzers
+Parallel Processing
    ↓
 Findings
    ↓
-Global / Dataset-level Analyzers
+Global Analysis
    ↓
 Action Policy
    ↓
-Quarantine / Final Dataset
+Quarantine
+   ↓
+Report
+```
 
-Instead of:
+Instead of loading and processing the entire dataset at once, images will be processed in batches.
 
+For example:
+
+```text
 1,000,000 images
-       ↓
-load everything
 
-we want:
-
-Batch 1 → 1000 images
-Batch 2 → 1000 images
-Batch 3 → 1000 images
+Batch 1 → 1,000 images
+Batch 2 → 1,000 images
+Batch 3 → 1,000 images
 ...
+```
 
 Independent analyzers such as corruption, blur, and resolution can eventually run in parallel.
 
-Global analyzers such as duplicate grouping, class statistics, leakage, and clustering require dataset-level state.
+Analyzers that need information from the complete dataset, such as duplicate grouping or dataset statistics, will use global state.
 
-We should not introduce distributed systems such as Kafka/Kubernetes/etc. yet. First build a batch-based local architecture and make it parallel; distributed processing can be added later if justified.
+---
 
-Pending Work — V1
+# Pending V1 Work
 
-Dataset-level analysis
+## Dataset Analysis
 
-Dataset statistics
+- [ ] Dataset statistics
+- [ ] Class distribution
+- [ ] Class imbalance
+- [ ] Train/test statistics
+- [ ] Image format statistics
+- [ ] Resolution statistics
 
-Class distribution
+## Leakage
 
-Class imbalance detection
+- [ ] Train/test leakage detection
+- [ ] Similarity-based leakage detection
+- [ ] Near-duplicate detection
 
-Train/validation/test statistics
+## Reporting
 
-Image format statistics
+- [ ] Report model
+- [ ] JSON report
+- [ ] Human-readable report
+- [ ] Findings summary
+- [ ] Quarantine summary
+- [ ] Dataset summary
 
-Resolution statistics
+## CLI
 
-Dataset summary
+- [ ] Dataset input
+- [ ] Configuration options
+- [ ] Analyzer selection
+- [ ] Action selection
+- [ ] Output directory
+- [ ] Final report generation
 
-Leakage
+---
 
-Design leakage detection
+# AI / ML Plans
 
-Train/test similarity analysis
+AI will not be used for every analyzer.
 
-Near-duplicate detection
+Traditional methods will be used where they are more appropriate.
 
-Leakage findings
+Examples:
 
-Reporting
-
-Final report model
-
-JSON report
-
-Human-readable report
-
-Summary of findings
-
-Quarantine summary
-
-Dataset statistics
-
-CLI
-
-Dataset input command
-
-Configuration options
-
-Analyzer selection
-
-Action policy configuration
-
-Output directory configuration
-
-Final report output
-
-AI / ML Roadmap
-
-AI will be used where semantic understanding is actually useful.
-
-Traditional techniques
-
+```text
 Corruption → Pillow
-Exact duplicate → SHA-256
+Exact duplicates → SHA-256
 Blur → OpenCV
 Resolution → Image metadata
-Statistics → Statistical analysis
+Statistics → Statistical methods
+```
 
-Future AI/ML
+AI/ML will be introduced for problems that require visual or semantic understanding.
 
+Planned AI capabilities include:
+
+- Image embeddings
+- Near-duplicate detection
+- Visual similarity
+- Wrong-label detection
+- Visual outlier detection
+- Train/test leakage detection
+- Clustering
+
+Possible future flow:
+
+```text
 Image
-  ↓
-Vision Encoder
-  ↓
+   ↓
+Vision Model
+   ↓
 Embedding
-  ↓
-Vector Index
-  ├── Visual similarity
-  ├── Near-duplicate detection
-  ├── Train/test leakage
-  ├── Wrong-label detection
-  ├── Visual outlier detection
-  └── Clustering
-
-Future Versions
-
-V1
-
-Image dataset support
-
-Dataset parsing
-
-Corruption detection
-
-Exact duplicate detection
-
-Blur detection
-
-Resolution detection
-
-Dataset statistics
-
-Leakage foundation
-
-Quarantine
-
-Reporting
-
-CLI
-
-V2
-
-Potential additions:
-
-Near-duplicate detection
-
-Image embeddings
-
-Wrong-label detection
-
-Visual outlier detection
-
-Flat dataset clustering
-
-Stronger leakage detection
-
-Adaptive thresholds
-
-Improved dataset health analysis
-
-Future
-
-Potential product capabilities:
-
-Dataset Health Score
-
-Before/after comparison
-
-AI explanations
-
-AI remediation recommendations
-
-Additional dataset formats
-
-Frontend
-
-Scalable workers
-
-Cloud/object storage
-
-Distributed processing
-
-SaaS platform
-
-Product Direction
-
-The long-term goal is not simply:
-
-"Find bad images."
-
-The intended direction is:
-
-Understand the health of an AI dataset, identify problems, explain them, recommend actions, safely apply approved changes, and verify the resulting dataset.
-
-The eventual workflow:
-
-Dataset
    ↓
-Diagnose
-   ↓
-Explain
-   ↓
-Decide
-   ↓
-Quarantine / Flag
-   ↓
-Continue
-   ↓
-Report
+Similarity / AI Analysis
+```
 
-Current Status
+---
 
-Foundation                  COMPLETE
-Core image analyzers        COMPLETE
-Dataset statistics          PENDING
-Leakage                     PENDING
-Reporting                   PENDING
-CLI                         PENDING
-AI subsystem                FUTURE PHASE
-Frontend                    FUTURE PHASE
-Scalable batch architecture IN DESIGN
-Distributed processing      FUTURE
+# Future Versions
 
-Immediate Next Step
+## Version 1
 
-Before adding many more analyzers, review and refactor the current pipeline toward:
+Focus on:
 
-BatchManager
+- Image dataset support
+- Dataset parsing
+- Corruption detection
+- Exact duplicate detection
+- Blur detection
+- Resolution detection
+- Dataset statistics
+- Leakage foundation
+- Quarantine
+- Reporting
+- CLI
 
-Dataset metadata/state separate from loaded image data
+## Version 2
 
-Batch-local vs global analyzers
+Possible additions:
 
-Parallel execution for independent analyzers
+- Near-duplicate detection
+- Image embeddings
+- Wrong-label detection
+- Visual outlier detection
+- Flat dataset clustering
+- Better leakage detection
+- Adaptive thresholds
 
-Safe action/quarantine handling
+## Later Versions
 
-Then continue with dataset statistics.
+Possible additions:
 
-Core Principle
+- Dataset Health Score
+- Before/after comparison
+- AI explanations
+- AI recommendations
+- More dataset formats
+- Frontend
+- Batch workers
+- Cloud storage
+- Distributed processing
+- SaaS platform
 
-Detect → Explain → Decide → Quarantine/Flag → Continue → Report
+---
+
+# Product Goal
+
+The long-term goal is to make Dataset Doctor more than a collection of dataset checks.
+
+The intended workflow is:
+
+```text
+Upload Dataset
+      ↓
+Analyze
+      ↓
+Find Problems
+      ↓
+Explain Problems
+      ↓
+Recommend Actions
+      ↓
+Flag / Quarantine / Ignore
+      ↓
+Generate Clean Dataset
+      ↓
+Generate Report
+```
+
+The core principle is:
+
+**Detect → Explain → Decide → Quarantine/Flag → Report**
+
+---
+
+# Current Status
+
+Completed:
+
+- Dataset models
+- Folder parser
+- Working dataset
+- Analyzer architecture
+- Corruption analyzer
+- Duplicate analyzer
+- Blur analyzer
+- Resolution analyzer
+- Action policy
+- Quarantine system
+- Pipeline
+- Automated tests
+
+Next:
+
+1. Rework the architecture for batch processing and scalability
+2. Add dataset statistics
+3. Implement leakage analysis
+4. Improve reporting
+5. Build CLI
+6. Add AI/ML capabilities in later stages
+
+Frontend and SaaS development will come after the backend foundation is stable.
