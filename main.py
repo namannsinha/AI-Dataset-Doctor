@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.router.tabular import (
+from app.routers.tabular import (
     router as tabular_router,
 )
 
