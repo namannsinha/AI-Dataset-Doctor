@@ -1,10 +1,9 @@
 from pathlib import Path
-
 from app.analyzers.corruption import CorruptionAnalyzer
 from app.analyzers.resolution import ResolutionAnalyzer
 from app.analyzers.blur import BlurAnalyzer
 from app.analyzers.duplicate import DuplicateAnalyzer
-
+from app.analyzers.clustering import ClusteringAnalyzer
 from app.core.action_policy import ActionPolicy
 from app.core.pipeline import Pipeline
 from app.core.working_dataset import WorkingDataset
@@ -19,6 +18,11 @@ from app.quarantine.quarantine_manager import (
 from app.reports.report_writer import ReportWriter
 from app.clean.clean_dataset_manager import (
     CleanDatasetManager,
+)
+from app.embeddings.embedding_pipeline import EmbeddingPipeline
+from app.embeddings.embedding_store import EmbeddingStore
+from app.analyzers.label_validation import (
+    LabelValidationAnalyzer,
 )
 
 
@@ -73,6 +77,8 @@ def main():
         min_width=224,
         min_height=224,
         batch_size=5,
+        enable_clustering=True,
+        num_clusters=5,
     )
 
     # -------------------------
@@ -87,8 +93,6 @@ def main():
     clean_dataset_manager = CleanDatasetManager(
         output_root=str(output_path),
     )
-    print("CLEAN ROOT:", clean_dataset_manager.clean_root)
-    print("CLEAN ROOT EXISTS:", clean_dataset_manager.clean_root.exists())
     # -------------------------
     # 6. Action policy
     # -------------------------
@@ -101,10 +105,12 @@ def main():
 
     action_policy = ActionPolicy(
         analyzer_actions={
-            "corruption": Action.QUARANTINE,
+            "corruption": Action.FLAG,
             "resolution": Action.FLAG,
             "blur": Action.FLAG,
             "duplicate": Action.FLAG,
+            "clustering": Action.FLAG,
+            "label_validation": Action.FLAG,
         }
     )
 
@@ -140,9 +146,149 @@ def main():
     print()
 
     results = pipeline.run()
+
+    # -------------------------
+    # 10. Generate embeddings
+    # -------------------------
+
+    print()
+    print("Generating embeddings...")
+    print()
+
+    # Create embedding store first
+    embedding_store = EmbeddingStore(
+        output_root=str(output_path),
+    )
+
+    # Give the store to the pipeline
+    embedding_pipeline = EmbeddingPipeline(
+        store=embedding_store,
+    )
+
+    embedding_pipeline.run(
+        working_dataset=working_dataset,
+        config=config,
+    )
+
+    stored_embeddings, stored_image_ids, stored_labels = (
+        embedding_store.load()
+    )
+    print(
+            f"Embeddings generated and stored for "
+            f"{len(stored_image_ids)} images."
+    )
+
+    # -------------------------
+    # 11. Run clustering
+    # -------------------------
+
+    print()
+    print("Running visual clustering...")
+    print()
+
+    clustering_analyzer = ClusteringAnalyzer()
+
+    clustering_result = (
+        clustering_analyzer.process_embeddings(
+            embeddings=stored_embeddings,
+            image_ids=stored_image_ids,
+            config=config,
+        )
+    )
+    results.append(clustering_result)
+
+    clustering_action = action_policy.get_action(
+        clustering_analyzer.name
+    )
+
+    if clustering_action == Action.QUARANTINE:
+
+        for finding in clustering_result.findings:
+
+            quarantine_manager.quarantine(
+                finding=finding,
+                analyzer_name=clustering_analyzer.name,
+            )
+
+    print(
+        f"Clustering checked "
+        f"{clustering_result.images_checked} images."
+    )
+
+    print(
+        f"Visual outliers found: "
+        f"{clustering_result.issues_found}"
+    )
+
+    # -------------------------
+    # 12. Run label validation
+    # -------------------------
+
+    print()
+    print("Running label validation...")
+    print()
+
+    label_validation_analyzer = (
+        LabelValidationAnalyzer()
+    )
+
+    label_validation_result = (
+        label_validation_analyzer.process_embeddings(
+            embeddings=stored_embeddings,
+            image_ids=stored_image_ids,
+            labels=stored_labels,
+            config=config,
+        )
+    )
+
+    results.append(
+        label_validation_result
+    )
+
+    label_validation_action = (
+        action_policy.get_action(
+            label_validation_analyzer.name
+        )
+    )
+
+    if (
+        label_validation_action
+        == Action.QUARANTINE
+    ):
+
+        for finding in (
+            label_validation_result.findings
+        ):
+
+            quarantine_manager.quarantine(
+                finding=finding,
+                analyzer_name=(
+                    label_validation_analyzer.name
+                ),
+            )
+
+    print(
+        f"Label validation checked "
+        f"{label_validation_result.images_checked} "
+        f"images."
+    )
+
+    print(
+        f"Label issues found: "
+        f"{label_validation_result.issues_found}"
+    )
+    # -------------------------
+    # 12. Export clean dataset
+    # -------------------------
+
     clean_dataset_manager.export(
         working_dataset=working_dataset,
     )
+
+    # -------------------------
+    # 13. Generate report
+    # -------------------------
+
     report_writer = ReportWriter()
 
     report_writer.write_json(
@@ -151,7 +297,7 @@ def main():
     )
 
     # -------------------------
-    # 10. Display results
+    # 14. Display results
     # -------------------------
 
     print()

@@ -6,6 +6,7 @@ from app.models.finding import Finding
 from app.models.image import ImageRecord
 from app.models.quarantine import QuarantineRecord
 from app.models.action import Action
+from app.models.embedding_result import ImageEmbedding
 
 __all__ = [
     "AnalysisResult",
@@ -16,4 +17,5 @@ __all__ = [
     "ImageRecord",
     "QuarantineRecord",
     "Action",
+    "ImageEmbedding",
 ]

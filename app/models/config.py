@@ -21,3 +21,11 @@ class DatasetConfig(BaseModel):
     batch_size: int = 100
     worker_count: int = 4
     max_in_flight: int = 4
+
+    # Label validation configuration
+    label_similarity_threshold: float = 0.75
+    label_margin: float = 0.03
+    enable_label_validation: bool = False
+
+    enable_clustering: bool = False
+    num_clusters: int = 5
