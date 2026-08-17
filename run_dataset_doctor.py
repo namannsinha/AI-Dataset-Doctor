@@ -17,6 +17,9 @@ from app.quarantine.quarantine_manager import (
     QuarantineManager,
 )
 from app.reports.report_writer import ReportWriter
+from app.clean.clean_dataset_manager import (
+    CleanDatasetManager,
+)
 
 
 def main():
@@ -81,6 +84,11 @@ def main():
         working_dataset=working_dataset,
     )
 
+    clean_dataset_manager = CleanDatasetManager(
+        output_root=str(output_path),
+    )
+    print("CLEAN ROOT:", clean_dataset_manager.clean_root)
+    print("CLEAN ROOT EXISTS:", clean_dataset_manager.clean_root.exists())
     # -------------------------
     # 6. Action policy
     # -------------------------
@@ -95,8 +103,8 @@ def main():
         analyzer_actions={
             "corruption": Action.QUARANTINE,
             "resolution": Action.FLAG,
-            "blur": Action.QUARANTINE,
-            "duplicate": Action.QUARANTINE,
+            "blur": Action.FLAG,
+            "duplicate": Action.FLAG,
         }
     )
 
@@ -132,6 +140,9 @@ def main():
     print()
 
     results = pipeline.run()
+    clean_dataset_manager.export(
+        working_dataset=working_dataset,
+    )
     report_writer = ReportWriter()
 
     report_writer.write_json(
