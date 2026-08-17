@@ -1,5 +1,3 @@
-from PIL import Image
-
 from app.analyzers.base import BaseAnalyzer
 from app.models import (
     AnalysisResult,
@@ -7,13 +5,14 @@ from app.models import (
     Finding,
     ImageBatch,
 )
+from app.utils.blur import calculate_blur_score
 
 
-class CorruptionAnalyzer(BaseAnalyzer):
+class BlurAnalyzer(BaseAnalyzer):
 
     @property
     def name(self) -> str:
-        return "corruption"
+        return "blur"
 
     def analyze(
         self,
@@ -26,21 +25,27 @@ class CorruptionAnalyzer(BaseAnalyzer):
         for image in working_dataset.images:
 
             try:
+                blur_score = calculate_blur_score(
+                    image.path
+                )
 
-                with Image.open(image.path) as img:
+            except Exception:
+                # Corrupted/unreadable images are handled
+                # by the CorruptionAnalyzer.
+                continue
 
-                    img.verify()
-
-            except Exception as exc:
+            if blur_score < config.blur_threshold:
 
                 findings.append(
                     Finding(
                         image_id=image.id,
-                        issue_type="corrupted",
-                        severity="high",
+                        issue_type="blur",
+                        severity="medium",
                         reason=(
-                            f"Image could not be decoded: "
-                            f"{type(exc).__name__}"
+                            f"Image blur score is "
+                            f"{blur_score:.2f}, which is below "
+                            f"the minimum threshold of "
+                            f"{config.blur_threshold:.2f}."
                         ),
                     )
                 )

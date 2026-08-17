@@ -16,3 +16,8 @@ class DatasetConfig(BaseModel):
     # Train/test configuration
     create_split: bool = False
     train_ratio: float = Field(default=0.8, gt=0, lt=1)
+
+    # Processing configuration
+    batch_size: int = 100
+    worker_count: int = 4
+    max_in_flight: int = 4

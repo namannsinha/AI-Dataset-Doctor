@@ -12,6 +12,7 @@ from app.models import (
     ImageRecord,
 )
 from app.quarantine.quarantine_manager import QuarantineManager
+from app.sources.folder_source import FolderDatasetSource
 
 
 class RemoveOneAnalyzer(BaseAnalyzer):
@@ -317,4 +318,170 @@ def test_pipeline_ignore_does_not_remove_image(tmp_path):
         assert not any(
             path.is_file()
             for path in quarantine_root.rglob("*")
+        )
+
+def test_pipeline_processes_multiple_batches(tmp_path):
+
+    dataset_root = tmp_path / "dataset"
+
+    images = []
+
+    for i in range(5):
+
+        path = dataset_root / f"image{i}.jpg"
+
+        path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        path.write_bytes(
+            b"test image"
+        )
+
+        images.append(
+            ImageRecord(
+                id=f"image{i}.jpg",
+                path=str(path),
+                original_path=f"image{i}.jpg",
+                filename=f"image{i}.jpg",
+                width=100,
+                height=100,
+                format="jpg",
+                file_size=path.stat().st_size,
+            )
+        )
+
+    dataset = Dataset(
+        dataset_id="test_dataset",
+        name="Test Dataset",
+        dataset_type=DatasetType.FLAT,
+        source_format="folder",
+        root_path=str(dataset_root),
+        images=images,
+    )
+
+    working_dataset = WorkingDataset(dataset)
+
+    output_root = tmp_path / "output"
+
+    quarantine_manager = QuarantineManager(
+        output_root=str(output_root),
+        working_dataset=working_dataset,
+    )
+
+    config = DatasetConfig(
+        batch_size=2,
+        worker_count=2,
+    )
+
+    pipeline = Pipeline(
+        analyzers=[
+            ObserveAnalyzer(),
+        ],
+        working_dataset=working_dataset,
+        config=config,
+        quarantine_manager=quarantine_manager,
+        action_policy=ActionPolicy(
+            analyzer_actions={
+                "observe": Action.FLAG,
+            }
+        ),
+    )
+
+    results = pipeline.run()
+
+    assert len(results) == 1
+
+    assert results[0].analyzer == "observe"
+
+    assert results[0].images_checked == 5
+
+    assert results[0].issues_found == 0
+
+def test_pipeline_works_with_streaming_source(tmp_path):
+
+    dataset_root = tmp_path / "dataset"
+
+    for name in [
+        "image1.jpg",
+        "image2.jpg",
+        "image3.jpg",
+        "image4.jpg",
+    ]:
+
+        path = dataset_root / name
+
+        path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        path.write_bytes(
+            b"test image"
+        )
+
+    source = FolderDatasetSource(
+        str(dataset_root)
+    )
+
+    dataset = Dataset(
+        dataset_id="stream_dataset",
+        name="Streaming Dataset",
+        dataset_type=DatasetType.FLAT,
+        source_format="folder",
+        root_path=str(dataset_root),
+        images=[],
+    )
+
+    working_dataset = WorkingDataset(
+        dataset=dataset,
+        image_source=source,
+    )
+
+    output_root = tmp_path / "output"
+
+    quarantine_manager = QuarantineManager(
+        output_root=str(output_root),
+        working_dataset=working_dataset,
+    )
+
+    pipeline = Pipeline(
+        analyzers=[
+            ObserveAnalyzer(),
+        ],
+        working_dataset=working_dataset,
+        config=DatasetConfig(
+            batch_size=2,
+        ),
+        quarantine_manager=quarantine_manager,
+        action_policy=ActionPolicy(
+            analyzer_actions={
+                "observe": Action.FLAG,
+            }
+        ),
+    )
+
+    results = pipeline.run()
+
+    assert len(results) == 1
+
+    assert results[0].images_checked == 4
+
+class StreamingObserveAnalyzer(BaseAnalyzer):
+
+    @property
+    def name(self) -> str:
+        return "streaming_observe"
+
+    def analyze(
+        self,
+        working_dataset,
+        config,
+    ) -> AnalysisResult:
+
+        return AnalysisResult(
+            analyzer=self.name,
+            images_checked=working_dataset.total_images,
+            findings=[],
         )

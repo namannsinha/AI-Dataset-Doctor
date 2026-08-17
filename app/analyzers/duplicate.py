@@ -1,16 +1,18 @@
-from collections import defaultdict
-
 from app.analyzers.base import BaseAnalyzer
-from app.core.working_dataset import WorkingDataset
+from app.core.duplicate_index import DuplicateIndex
 from app.models import (
     AnalysisResult,
     DatasetConfig,
     Finding,
+    ImageBatch,
 )
-from app.utils.hashing import calculate_file_hash
+from app.models.hash_result import ImageHash
 
 
 class DuplicateAnalyzer(BaseAnalyzer):
+
+    def __init__(self):
+        self.index = DuplicateIndex()
 
     @property
     def name(self) -> str:
@@ -18,57 +20,54 @@ class DuplicateAnalyzer(BaseAnalyzer):
 
     def analyze(
         self,
-        working_dataset: WorkingDataset,
+        working_dataset: ImageBatch,
         config: DatasetConfig,
     ) -> AnalysisResult:
 
+        # Normal analyzer contract.
+        #
+        # Actual duplicate detection is performed
+        # through process_hashes().
+        return AnalysisResult(
+            analyzer=self.name,
+            images_checked=len(
+                working_dataset.images
+            ),
+            findings=[],
+        )
+
+    def process_hashes(
+        self,
+        hash_results: list[ImageHash],
+    ) -> list[Finding]:
+
         findings = []
 
-        hash_groups = defaultdict(list)
+        for image_hash in hash_results:
 
-        # --------------------------------
-        # 1. Calculate hash for each image
-        # --------------------------------
-
-        for image in working_dataset.images:
-
-            file_hash = calculate_file_hash(
-                image.path
+            existing_images = self.index.get_images(
+                image_hash.file_hash
             )
 
-            hash_groups[file_hash].append(
-                image
+            self.index.add(
+                image_id=image_hash.image_id,
+                file_hash=image_hash.file_hash,
             )
 
-        # --------------------------------
-        # 2. Find duplicate groups
-        # --------------------------------
+            if existing_images:
 
-        for images in hash_groups.values():
-
-            if len(images) <= 1:
-                continue
-
-            # Keep the first image.
-            retained_image = images[0]
-
-            # Every remaining image is a duplicate.
-            for duplicate_image in images[1:]:
+                original_image = existing_images[0]
 
                 findings.append(
                     Finding(
-                        image_id=duplicate_image.id,
+                        image_id=image_hash.image_id,
                         issue_type="duplicate",
                         severity="medium",
                         reason=(
-                            "Exact duplicate of "
-                            f"{retained_image.id}"
+                            f"Exact duplicate of "
+                            f"{original_image}."
                         ),
                     )
                 )
 
-        return AnalysisResult(
-            analyzer=self.name,
-            images_checked=working_dataset.total_images,
-            findings=findings,
-        )
+        return findings

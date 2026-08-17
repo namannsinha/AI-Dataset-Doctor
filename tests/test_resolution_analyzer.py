@@ -89,7 +89,7 @@ def test_resolution_analyzer_detects_low_resolution(
 
     assert finding.image_id == "small.jpg"
 
-    assert finding.issue_type == "resolution"
+    assert finding.issue_type == "low_resolution"
 
 def test_resolution_checks_width_and_height(
     tmp_path,

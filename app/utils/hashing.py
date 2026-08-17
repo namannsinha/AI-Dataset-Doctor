@@ -1,23 +1,28 @@
 import hashlib
-from pathlib import Path
 
 
 def calculate_file_hash(
     file_path: str,
-    chunk_size: int = 8192,
+    chunk_size: int = 1024 * 1024,
 ) -> str:
     """
     Calculate the SHA-256 hash of a file.
 
     The file is read in chunks so that large files
-    do not need to be loaded entirely into memory.
+    do not need to be loaded completely into memory.
     """
 
-    hasher = hashlib.sha256()
+    sha256 = hashlib.sha256()
 
-    with Path(file_path).open("rb") as file:
+    with open(file_path, "rb") as file:
 
-        while chunk := file.read(chunk_size):
-            hasher.update(chunk)
+        while True:
 
-    return hasher.hexdigest()
+            chunk = file.read(chunk_size)
+
+            if not chunk:
+                break
+
+            sha256.update(chunk)
+
+    return sha256.hexdigest()

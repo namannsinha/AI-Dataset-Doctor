@@ -109,3 +109,47 @@ def test_parse_flat_dataset(tmp_path):
     for image in dataset.images:
         assert image.label is None
         assert image.split is None
+
+def test_folder_parser_streaming_mode(tmp_path):
+
+    dataset_root = tmp_path / "dataset"
+
+    paths = [
+        dataset_root / "train" / "cat" / "cat1.jpg",
+        dataset_root / "train" / "dog" / "dog1.jpg",
+        dataset_root / "test" / "cat" / "cat2.jpg",
+    ]
+
+    for path in paths:
+
+        path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        path.write_bytes(
+            b"test image"
+        )
+
+    parser = FolderParser()
+
+    dataset = parser.parse(
+        str(dataset_root),
+        streaming=True,
+    )
+
+    assert dataset.has_streaming_source is True
+
+    assert dataset.images == []
+
+    assert dataset.dataset_type == DatasetType.TRAIN_TEST
+
+    assert dataset.classes == [
+        "cat",
+        "dog",
+    ]
+
+    assert dataset.splits == [
+        "test",
+        "train",
+    ]

@@ -3,6 +3,8 @@ from pathlib import Path
 from PIL import Image
 
 from app.models import Dataset, DatasetType, ImageRecord
+from app.sources.folder_source import FolderDatasetSource
+from app.models.dataset_metadata import DatasetMetadata
 
 
 SUPPORTED_EXTENSIONS = {
@@ -25,10 +27,18 @@ SPLIT_NAMES = {
 
 class FolderParser:
 
-    def parse(self, folder_path: str) -> Dataset:
+    def parse(
+        self,
+        folder_path: str,
+        streaming: bool = False,
+    ) -> Dataset:
+
         root = Path(folder_path)
 
+        # -------------------------
         # 1. Validate input folder
+        # -------------------------
+
         if not root.exists():
             raise FileNotFoundError(
                 f"Dataset folder not found: {folder_path}"
@@ -39,7 +49,39 @@ class FolderParser:
                 f"Expected a directory: {folder_path}"
             )
 
-        # 2. Find all supported images
+        # -------------------------
+        # 2. Streaming mode
+        # -------------------------
+
+        if streaming:
+
+            source = FolderDatasetSource(
+                str(root)
+            )
+
+            metadata = source.discover_metadata()
+
+            if metadata.image_count == 0:
+                raise ValueError(
+                    "No supported image files found in dataset."
+                )
+
+            return Dataset(
+                dataset_id=root.name,
+                name=root.name,
+                dataset_type=metadata.dataset_type,
+                source_format="folder",
+                root_path=str(root.resolve()),
+                images=[],
+                classes=metadata.classes,
+                splits=metadata.splits,
+                has_streaming_source=True,
+            )
+
+        # -------------------------
+        # 3. Existing mode
+        # -------------------------
+
         image_files = self._find_images(root)
 
         if not image_files:
@@ -47,13 +89,11 @@ class FolderParser:
                 "No supported image files found in dataset."
             )
 
-        # 3. Detect dataset structure
         dataset_type = self._detect_dataset_type(
             root,
             image_files,
         )
 
-        # 4. Convert every image into an ImageRecord
         images = [
             self._create_image_record(
                 root=root,
@@ -63,7 +103,6 @@ class FolderParser:
             for image_path in image_files
         ]
 
-        # 5. Extract classes
         classes = sorted(
             {
                 image.label
@@ -72,7 +111,6 @@ class FolderParser:
             }
         )
 
-        # 6. Extract splits
         splits = sorted(
             {
                 image.split
@@ -80,8 +118,7 @@ class FolderParser:
                 if image.split is not None
             }
         )
-
-        # 7. Create the common Dataset object
+        
         return Dataset(
             dataset_id=root.name,
             name=root.name,
@@ -91,6 +128,7 @@ class FolderParser:
             images=images,
             classes=classes,
             splits=splits,
+            has_streaming_source=False,
         )
 
     def _find_images(self, root: Path) -> list[Path]:

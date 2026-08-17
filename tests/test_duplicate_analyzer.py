@@ -1,193 +1,144 @@
 from app.analyzers.duplicate import DuplicateAnalyzer
-from app.core.working_dataset import WorkingDataset
-from app.models import (
-    Dataset,
-    DatasetConfig,
-    DatasetType,
-    ImageRecord,
-)
+from app.models.hash_result import ImageHash
 
-def create_image_record(path):
 
-    return ImageRecord(
-        id=path.name,
-        path=str(path),
-        original_path=path.name,
-        filename=path.name,
-        width=100,
-        height=100,
-        format="jpg",
-        file_size=path.stat().st_size,
-    )
-
-def test_detects_exact_duplicate(tmp_path):
-
-    file1 = tmp_path / "cat.jpg"
-    file2 = tmp_path / "cat_copy.jpg"
-
-    content = b"identical image content"
-
-    file1.write_bytes(content)
-    file2.write_bytes(content)
-
-    images = [
-        create_image_record(file1),
-        create_image_record(file2),
-    ]
-
-    dataset = Dataset(
-        dataset_id="test_dataset",
-        name="Test Dataset",
-        dataset_type=DatasetType.FLAT,
-        source_format="folder",
-        root_path=str(tmp_path),
-        images=images,
-    )
-
-    working_dataset = WorkingDataset(
-        dataset
-    )
+def test_duplicate_analyzer_detects_duplicate():
 
     analyzer = DuplicateAnalyzer()
 
-    result = analyzer.analyze(
-        working_dataset=working_dataset,
-        config=DatasetConfig(),
+    first_batch = [
+        ImageHash(
+            image_id="image1.jpg",
+            file_hash="ABC",
+        )
+    ]
+
+    second_batch = [
+        ImageHash(
+            image_id="image2.jpg",
+            file_hash="ABC",
+        )
+    ]
+
+    # First image becomes the original.
+    findings1 = analyzer.process_hashes(
+        first_batch
     )
 
-    assert result.analyzer == "duplicate"
+    assert findings1 == []
 
-    assert result.images_checked == 2
+    # Second image has the same hash.
+    findings2 = analyzer.process_hashes(
+        second_batch
+    )
 
-    assert result.issues_found == 1
+    assert len(findings2) == 1
 
-    finding = result.findings[0]
+    finding = findings2[0]
 
-    assert finding.image_id == "cat_copy.jpg"
-
+    assert finding.image_id == "image2.jpg"
     assert finding.issue_type == "duplicate"
+    assert finding.severity == "medium"
 
-    assert "cat.jpg" in finding.reason
-
-def test_unique_images_are_not_flagged(tmp_path):
-
-    file1 = tmp_path / "cat.jpg"
-    file2 = tmp_path / "dog.jpg"
-
-    file1.write_bytes(b"cat content")
-    file2.write_bytes(b"dog content")
-
-    images = [
-        create_image_record(file1),
-        create_image_record(file2),
-    ]
-
-    dataset = Dataset(
-        dataset_id="test_dataset",
-        name="Test Dataset",
-        dataset_type=DatasetType.FLAT,
-        source_format="folder",
-        root_path=str(tmp_path),
-        images=images,
+    assert (
+        finding.reason
+        == "Exact duplicate of image1.jpg."
     )
 
-    working_dataset = WorkingDataset(
-        dataset
-    )
+
+def test_unique_images_are_not_duplicates():
 
     analyzer = DuplicateAnalyzer()
 
-    result = analyzer.analyze(
-        working_dataset=working_dataset,
-        config=DatasetConfig(),
-    )
-
-    assert result.images_checked == 2
-
-    assert result.issues_found == 0
-
-    assert result.findings == []
-
-def test_detects_multiple_duplicates(tmp_path):
-
-    files = [
-        tmp_path / "cat1.jpg",
-        tmp_path / "cat2.jpg",
-        tmp_path / "cat3.jpg",
+    results = [
+        ImageHash(
+            image_id="image1.jpg",
+            file_hash="ABC",
+        ),
+        ImageHash(
+            image_id="image2.jpg",
+            file_hash="XYZ",
+        ),
     ]
 
-    content = b"same image"
-
-    for file in files:
-        file.write_bytes(content)
-
-    images = [
-        create_image_record(file)
-        for file in files
-    ]
-
-    dataset = Dataset(
-        dataset_id="test_dataset",
-        name="Test Dataset",
-        dataset_type=DatasetType.FLAT,
-        source_format="folder",
-        root_path=str(tmp_path),
-        images=images,
+    findings = analyzer.process_hashes(
+        results
     )
 
-    working_dataset = WorkingDataset(
-        dataset
-    )
+    assert findings == []
+
+
+def test_multiple_duplicates():
 
     analyzer = DuplicateAnalyzer()
 
-    result = analyzer.analyze(
-        working_dataset=working_dataset,
-        config=DatasetConfig(),
+    analyzer.process_hashes(
+        [
+            ImageHash(
+                image_id="original.jpg",
+                file_hash="ABC",
+            )
+        ]
     )
 
-    assert result.images_checked == 3
-
-    assert result.issues_found == 2
-
-def test_filename_does_not_affect_duplicate_detection(
-    tmp_path,
-):
-
-    original = (
-        tmp_path
-        / "random_filename_123.jpg"
+    findings = analyzer.process_hashes(
+        [
+            ImageHash(
+                image_id="copy1.jpg",
+                file_hash="ABC",
+            ),
+            ImageHash(
+                image_id="copy2.jpg",
+                file_hash="ABC",
+            ),
+        ]
     )
 
-    copy = (
-        tmp_path
-        / "completely_different_name.jpg"
+    assert len(findings) == 2
+
+    assert findings[0].image_id == "copy1.jpg"
+    assert findings[1].image_id == "copy2.jpg"
+
+    assert (
+        findings[0].reason
+        == "Exact duplicate of original.jpg."
     )
 
-    content = b"same content"
-
-    original.write_bytes(content)
-    copy.write_bytes(content)
-
-    dataset = Dataset(
-        dataset_id="test_dataset",
-        name="Test Dataset",
-        dataset_type=DatasetType.FLAT,
-        source_format="folder",
-        root_path=str(tmp_path),
-        images=[
-            create_image_record(original),
-            create_image_record(copy),
-        ],
+    assert (
+        findings[1].reason
+        == "Exact duplicate of original.jpg."
     )
 
-    working_dataset = WorkingDataset(
-        dataset
+
+def test_duplicates_across_batches():
+
+    analyzer = DuplicateAnalyzer()
+
+    # Batch 1
+    findings1 = analyzer.process_hashes(
+        [
+            ImageHash(
+                image_id="batch1/image.jpg",
+                file_hash="ABC",
+            )
+        ]
     )
 
-    result = DuplicateAnalyzer().analyze(
-        working_dataset=working_dataset,
-        config=DatasetConfig(),
+    assert findings1 == []
+
+    # Batch 2
+    findings2 = analyzer.process_hashes(
+        [
+            ImageHash(
+                image_id="batch2/image.jpg",
+                file_hash="ABC",
+            )
+        ]
     )
 
-    assert result.issues_found == 1
+    assert len(findings2) == 1
+
+    assert (
+        findings2[0].image_id
+        == "batch2/image.jpg"
+    )
