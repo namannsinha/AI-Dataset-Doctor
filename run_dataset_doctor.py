@@ -105,10 +105,10 @@ def main():
 
     action_policy = ActionPolicy(
         analyzer_actions={
-            "corruption": Action.FLAG,
+            "corruption": Action.QUARANTINE,
             "resolution": Action.FLAG,
-            "blur": Action.FLAG,
-            "duplicate": Action.FLAG,
+            "blur": Action.QUARANTINE,
+            "duplicate": Action.QUARANTINE,
             "clustering": Action.FLAG,
             "label_validation": Action.FLAG,
         }
