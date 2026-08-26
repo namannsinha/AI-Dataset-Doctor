@@ -38,10 +38,41 @@ class Pipeline:
                 worker_count=4,
             )
         )
+
+    def _is_analyzer_enabled(
+        self,
+        analyzer: BaseAnalyzer,
+    ) -> bool:
+
+        if isinstance(analyzer, DuplicateAnalyzer):
+            return self.config.enable_duplicates
+
+        if analyzer.name == "blur":
+            return self.config.enable_blur_detection
+
+        if analyzer.name == "resolution":
+            return self.config.enable_resolution_check
+
+        if analyzer.name == "corruption":
+            return self.config.enable_corruption_detection
+
+        return True
+
     def run(self) -> list[AnalysisResult]:
         results = []
 
         for analyzer in self.analyzers:
+
+            # -------------------------
+            # Check analyzer switch
+            # -------------------------
+
+            if not self._is_analyzer_enabled(analyzer):
+                print(
+                    f"Skipping disabled analyzer: "
+                    f"{analyzer.name}"
+                )
+                continue
 
             # -------------------------
             # 1. Stream active images
