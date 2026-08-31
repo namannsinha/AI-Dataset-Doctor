@@ -35,7 +35,7 @@ class Pipeline:
             worker_pool
             if worker_pool is not None
             else WorkerPool(
-                worker_count=4,
+                worker_count=config.worker_count,
             )
         )
 

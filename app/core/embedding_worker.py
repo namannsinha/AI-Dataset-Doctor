@@ -20,24 +20,50 @@ class EmbeddingWorker:
         batch: ImageBatch,
     ) -> list[ImageEmbedding]:
 
+        if not batch.images:
+            return []
+
+        # -----------------------------------------
+        # 1. Collect image paths
+        # -----------------------------------------
+
+        image_paths = [
+            image.path
+            for image in batch.images
+        ]
+
+        # -----------------------------------------
+        # 2. Generate embeddings as one batch
+        # -----------------------------------------
+
+        embeddings, valid_paths = (
+            self.embedding_service
+            .generate_embeddings(
+                image_paths
+            )
+        )
+
+        # -----------------------------------------
+        # 3. Map paths back to ImageRecords
+        # -----------------------------------------
+
+        path_to_image = {
+            image.path: image
+            for image in batch.images
+        }
+
         results = []
 
-        for image in batch.images:
+        for embedding, image_path in zip(
+            embeddings,
+            valid_paths,
+        ):
 
-            try:
-                embedding = (
-                    self.embedding_service.generate_embedding(
-                        image.path
-                    )
-                )
+            image = path_to_image.get(
+                image_path
+            )
 
-            except Exception as exc:
-
-                print(
-                    f"Could not generate embedding "
-                    f"for {image.path}: {exc}"
-                )
-
+            if image is None:
                 continue
 
             results.append(
@@ -46,7 +72,10 @@ class EmbeddingWorker:
                     label=image.label,
                     embedding=(
                         embedding.tolist()
-                        if hasattr(embedding, "tolist")
+                        if hasattr(
+                            embedding,
+                            "tolist",
+                        )
                         else list(embedding)
                     ),
                 )

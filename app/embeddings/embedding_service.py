@@ -14,34 +14,73 @@ class EmbeddingService:
             model_name
         )
 
-    def generate_embedding(
+    def generate_embeddings(
         self,
-        image_path: str,
+        image_paths: list[str],
     ):
 
-        path = Path(image_path)
+        images = []
+        valid_paths = []
 
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Image not found: {image_path}"
-            )
+        # -----------------------------------------
+        # 1. Load images
+        # -----------------------------------------
 
-        try:
-            with Image.open(path) as image:
+        for image_path in image_paths:
 
-                image = image.convert("RGB")
+            path = Path(image_path)
 
-                embedding = self.model.encode(
-                    image,
-                    convert_to_numpy=True,
-                    normalize_embeddings=True,
+            if not path.exists():
+
+                print(
+                    f"Image not found: {image_path}"
                 )
 
-        except Exception as e:
+                continue
+
+            try:
+
+                with Image.open(path) as image:
+
+                    image = image.convert("RGB")
+
+                    # Keep a copy after closing
+                    # the source image.
+                    images.append(image.copy())
+                    valid_paths.append(image_path)
+
+            except Exception as exc:
+
+                print(
+                    f"Unable to load image "
+                    f"{image_path}: {exc}"
+                )
+
+        # -----------------------------------------
+        # 2. Handle empty batch
+        # -----------------------------------------
+
+        if not images:
+            return [], []
+
+        # -----------------------------------------
+        # 3. Generate embeddings for entire batch
+        # -----------------------------------------
+
+        try:
+
+            embeddings = self.model.encode(
+                images,
+                convert_to_numpy=True,
+                normalize_embeddings=True,
+                show_progress_bar=False,
+            )
+
+        except Exception as exc:
 
             raise ValueError(
-                f"Unable to generate embedding "
-                f"for image: {image_path}"
-            ) from e
+                "Unable to generate embeddings "
+                "for image batch."
+            ) from exc
 
-        return embedding
+        return embeddings, valid_paths

@@ -20,7 +20,7 @@ class DatasetConfig(BaseModel):
     # Analyzer actions
     # =========================
 
-    corruption_action: Action = Action.FLAG
+    corruption_action: Action = Action.QUARANTINE
     resolution_action: Action = Action.FLAG
     blur_action: Action = Action.QUARANTINE
     duplicate_action: Action = Action.QUARANTINE
@@ -37,7 +37,7 @@ class DatasetConfig(BaseModel):
     # Blur configuration
     # =========================
 
-    blur_threshold: float = 60.0
+    blur_threshold: float = 150.0
 
     # =========================
     # Resolution configuration

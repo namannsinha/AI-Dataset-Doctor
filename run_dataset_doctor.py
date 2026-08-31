@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import time
 from app.analyzers.blur import BlurAnalyzer
 from app.analyzers.clustering import ClusteringAnalyzer
 from app.analyzers.corruption import CorruptionAnalyzer
@@ -35,7 +35,7 @@ from app.parsers.folder_parser import FolderParser
 from app.quarantine.quarantine_manager import (
     QuarantineManager,
 )
-
+import time
 from app.reports.report_writer import ReportWriter
 
 
@@ -170,6 +170,8 @@ def main():
         print("Generating embeddings...")
         print()
 
+        embedding_start = time.perf_counter()
+
         embedding_store = EmbeddingStore(
             output_root=str(output_path),
         )
@@ -185,11 +187,18 @@ def main():
             config=config,
         )
 
-        (
-            stored_embeddings,
-            stored_image_ids,
-            stored_labels,
-        ) = embedding_store.load()
+        embedding_end = time.perf_counter()
+
+        embedding_time = embedding_end - embedding_start
+
+        print(
+            f"Embedding generation took "
+            f"{embedding_time / 60:.2f} minutes."
+        )
+
+        stored_embeddings, stored_image_ids, stored_labels = (
+            embedding_store.load()
+        )
 
         print(
             f"Embeddings generated and stored "
