@@ -297,7 +297,7 @@ def test_pipeline_ignore_does_not_remove_image(tmp_path):
         quarantine_manager=quarantine_manager,
         action_policy=ActionPolicy(
             analyzer_actions={
-                "remove_one": Action.IGNORE,
+                "remove_one": Action.FLAG,
             }
         ),
     )

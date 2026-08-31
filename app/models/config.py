@@ -13,7 +13,7 @@ class DatasetConfig(BaseModel):
     enable_resolution_check: bool = True
     enable_blur_detection: bool = True
     enable_duplicates: bool = True
-    enable_clustering: bool = False
+    enable_clustering: bool = True
     enable_label_validation: bool = False
 
     # =========================
@@ -77,7 +77,7 @@ class DatasetConfig(BaseModel):
     # Clustering
     # =========================
 
-    num_clusters: int = 5
+    num_clusters: int = 2
     cluster_output_dir: str = "clusters"
 
     # =========================

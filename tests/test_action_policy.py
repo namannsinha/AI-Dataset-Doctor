@@ -41,11 +41,11 @@ def test_policy_can_ignore_analyzer():
 
     policy = ActionPolicy(
         analyzer_actions={
-            "resolution": Action.IGNORE,
+            "resolution": Action.FLAG,
         }
     )
 
     assert (
         policy.get_action("resolution")
-        == Action.IGNORE
+        == Action.FLAG
     )
