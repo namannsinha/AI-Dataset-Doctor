@@ -78,6 +78,7 @@ class DatasetConfig(BaseModel):
     # =========================
 
     num_clusters: int = 5
+    cluster_output_dir: str = "clusters"
 
     # =========================
     # Action policy

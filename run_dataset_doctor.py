@@ -4,21 +4,31 @@ from app.analyzers.blur import BlurAnalyzer
 from app.analyzers.clustering import ClusteringAnalyzer
 from app.analyzers.corruption import CorruptionAnalyzer
 from app.analyzers.duplicate import DuplicateAnalyzer
-from app.analyzers.label_validation import LabelValidationAnalyzer
+from app.analyzers.label_validation import (
+    LabelValidationAnalyzer,
+)
 from app.analyzers.resolution import ResolutionAnalyzer
 
 from app.clean.clean_dataset_manager import (
     CleanDatasetManager,
 )
 
+from app.clustering.cluster_manager import (
+    ClusterManager,
+)
+
 from app.core.action_policy import ActionPolicy
 from app.core.pipeline import Pipeline
 from app.core.working_dataset import WorkingDataset
 
-from app.embeddings.embedding_pipeline import EmbeddingPipeline
-from app.embeddings.embedding_store import EmbeddingStore
+from app.embeddings.embedding_pipeline import (
+    EmbeddingPipeline,
+)
+from app.embeddings.embedding_store import (
+    EmbeddingStore,
+)
 
-from app.models import DatasetConfig
+from app.models import Action, DatasetConfig
 
 from app.parsers.folder_parser import FolderParser
 
@@ -75,10 +85,8 @@ def main():
     # 4. Load configuration
     # =========================
     #
-    # All analyzer switches,
-    # actions, thresholds and
-    # processing settings come
-    # from DatasetConfig.
+    # All user-configurable settings
+    # are loaded from DatasetConfig.
     #
 
     config = DatasetConfig()
@@ -88,7 +96,9 @@ def main():
     # =========================
 
     action_policy = ActionPolicy(
-        analyzer_actions=config.get_analyzer_actions()
+        analyzer_actions=(
+            config.get_analyzer_actions()
+        )
     )
 
     # =========================
@@ -100,19 +110,21 @@ def main():
         working_dataset=working_dataset,
     )
 
-    clean_dataset_manager = CleanDatasetManager(
-        output_root=str(output_path),
+    clean_dataset_manager = (
+        CleanDatasetManager(
+            output_root=str(output_path),
+        )
     )
 
     # =========================
     # 7. Create analyzers
     # =========================
     #
-    # These are all available
-    # analyzers.
+    # These are the analyzers supported
+    # by Dataset Doctor.
     #
-    # DatasetConfig determines
-    # which ones actually run.
+    # DatasetConfig determines which
+    # analyzers actually execute.
     #
 
     analyzers = [
@@ -162,8 +174,10 @@ def main():
             output_root=str(output_path),
         )
 
-        embedding_pipeline = EmbeddingPipeline(
-            store=embedding_store,
+        embedding_pipeline = (
+            EmbeddingPipeline(
+                store=embedding_store,
+            )
         )
 
         embedding_pipeline.run(
@@ -178,8 +192,8 @@ def main():
         ) = embedding_store.load()
 
         print(
-            f"Embeddings generated and stored for "
-            f"{len(stored_image_ids)} images."
+            f"Embeddings generated and stored "
+            f"for {len(stored_image_ids)} images."
         )
 
         # =========================
@@ -189,7 +203,9 @@ def main():
         if config.enable_clustering:
 
             print()
-            print("Running visual clustering...")
+            print(
+                "Running visual clustering..."
+            )
             print()
 
             clustering_analyzer = (
@@ -204,28 +220,39 @@ def main():
                 )
             )
 
+            # -------------------------
+            # Store clustering result
+            # -------------------------
+
             results.append(
                 clustering_result
             )
 
-            clustering_action = (
-                action_policy.get_action(
-                    clustering_analyzer.name
-                )
+            # -------------------------
+            # Create cluster folders
+            # -------------------------
+
+            cluster_manager = ClusterManager(
+                output_root=str(output_path),
             )
 
-            if clustering_action == "quarantine":
+            cluster_manager.create_clusters(
+                working_dataset=working_dataset,
+                cluster_assignments=(
+                    clustering_result
+                    .cluster_assignments
+                ),
+                num_clusters=(
+                    config.num_clusters
+                ),
+                output_dir=(
+                    config.cluster_output_dir
+                ),
+            )
 
-                for finding in (
-                    clustering_result.findings
-                ):
-
-                    quarantine_manager.quarantine(
-                        finding=finding,
-                        analyzer_name=(
-                            clustering_analyzer.name
-                        ),
-                    )
+            # -------------------------
+            # Display clustering result
+            # -------------------------
 
             print(
                 f"Clustering checked "
@@ -251,7 +278,9 @@ def main():
         if config.enable_label_validation:
 
             print()
-            print("Running label validation...")
+            print(
+                "Running label validation..."
+            )
             print()
 
             label_validation_analyzer = (
@@ -259,7 +288,8 @@ def main():
             )
 
             label_validation_result = (
-                label_validation_analyzer.process_embeddings(
+                label_validation_analyzer
+                .process_embeddings(
                     embeddings=stored_embeddings,
                     image_ids=stored_image_ids,
                     labels=stored_labels,
@@ -267,9 +297,17 @@ def main():
                 )
             )
 
+            # -------------------------
+            # Store result
+            # -------------------------
+
             results.append(
                 label_validation_result
             )
+
+            # -------------------------
+            # Determine action
+            # -------------------------
 
             label_validation_action = (
                 action_policy.get_action(
@@ -277,7 +315,14 @@ def main():
                 )
             )
 
-            if label_validation_action == "quarantine":
+            # -------------------------
+            # Quarantine findings
+            # -------------------------
+
+            if (
+                label_validation_action
+                == Action.QUARANTINE
+            ):
 
                 for finding in (
                     label_validation_result.findings
@@ -289,6 +334,10 @@ def main():
                             label_validation_analyzer.name
                         ),
                     )
+
+            # -------------------------
+            # Display result
+            # -------------------------
 
             print(
                 f"Label validation checked "

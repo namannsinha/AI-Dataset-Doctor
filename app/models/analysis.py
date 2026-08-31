@@ -8,7 +8,13 @@ class AnalysisResult(BaseModel):
 
     images_checked: int
 
-    findings: list[Finding] = Field(default_factory=list)
+    findings: list[Finding] = Field(
+        default_factory=list
+    )
+
+    cluster_assignments: dict[str, int] = Field(
+        default_factory=dict
+    )
 
     @property
     def issues_found(self) -> int:

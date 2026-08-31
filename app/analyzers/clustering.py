@@ -95,7 +95,30 @@ class ClusteringAnalyzer(BaseAnalyzer):
         )
 
         # -----------------------------------------
-        # 5. Calculate distance from cluster center
+        # 5. Create cluster assignments
+        # -----------------------------------------
+        #
+        # Maps:
+        #
+        # image_id -> cluster number
+        #
+        # Example:
+        #
+        # {
+        #     "image_001": 0,
+        #     "image_002": 2,
+        #     "image_003": 0,
+        # }
+
+        cluster_assignments = {
+            image_ids[index]: int(
+                cluster_labels[index]
+            )
+            for index in range(len(image_ids))
+        }
+
+        # -----------------------------------------
+        # 6. Calculate distance from cluster center
         # -----------------------------------------
 
         distances = clustering.transform(
@@ -108,7 +131,7 @@ class ClusteringAnalyzer(BaseAnalyzer):
         ]
 
         # -----------------------------------------
-        # 6. Calculate threshold
+        # 7. Calculate threshold
         #
         # Images that are unusually far from
         # their cluster center are suspicious.
@@ -122,7 +145,7 @@ class ClusteringAnalyzer(BaseAnalyzer):
         findings = []
 
         # -----------------------------------------
-        # 7. Identify visual outliers
+        # 8. Identify visual outliers
         # -----------------------------------------
 
         for index, distance in enumerate(
@@ -147,11 +170,12 @@ class ClusteringAnalyzer(BaseAnalyzer):
             )
 
         # -----------------------------------------
-        # 8. Return result
+        # 9. Return result
         # -----------------------------------------
 
         return AnalysisResult(
             analyzer=self.name,
             images_checked=len(image_ids),
             findings=findings,
+            cluster_assignments=cluster_assignments,
         )
