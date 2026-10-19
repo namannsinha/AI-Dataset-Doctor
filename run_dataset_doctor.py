@@ -117,6 +117,23 @@ def main(
     print(f"Configured clusters: {config.num_clusters}")
     print(f"Clustering enabled: {config.enable_clustering}")
 
+    # Remove stale cluster exports when clustering is disabled.
+    if not config.enable_clustering:
+        cluster_output = output_path / "clusters"
+
+        if cluster_output.exists():
+            for item in cluster_output.iterdir():
+                if (
+                    item.is_dir()
+                    and item.name.startswith("cluster_")
+                    and item.name.removeprefix("cluster_").isdigit()
+                ):
+                    shutil.rmtree(item)
+
+            print("Clustering disabled; old cluster exports cleared.")
+        else:
+            print("Clustering disabled; no previous cluster exports found.")
+
     # 5. Managers
     quarantine_manager = QuarantineManager(
         output_root=str(output_path),
@@ -161,14 +178,9 @@ def main(
     results = pipeline.run()
     
     # 9. Run embedding-dependent analyzers only when needed.
-    clustering_enabled = (
-        config.enable_clustering
-        and action_policy.get_action("clustering") != Action.IGNORE
-    )
-    label_validation_enabled = (
-        config.enable_label_validation
-        and action_policy.get_action("label_validation") != Action.IGNORE
-    )
+    clustering_enabled = config.enable_clustering
+
+    label_validation_enabled = config.enable_label_validation
 
     if clustering_enabled or label_validation_enabled:
         print("\nGenerating embeddings...\n")
@@ -226,15 +238,7 @@ def main(
                 output_dir=output_path / "clusters",
             )
 
-            if (
-                action_policy.get_action("clustering")
-                == Action.QUARANTINE
-            ):
-                for finding in clustering_result.findings:
-                    quarantine_manager.quarantine(
-                        finding=finding,
-                        analyzer_name=clustering_analyzer.name,
-                    )
+            
         else:
             print("\nClustering disabled or ignored; skipping.")
 

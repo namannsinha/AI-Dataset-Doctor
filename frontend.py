@@ -421,7 +421,6 @@ with st.container(border=True):
         "resolution": "Flag",
         "blur": "Quarantine",
         "duplicate": "Quarantine",
-        "clustering": "Flag",
         "label_validation": "Flag",
     }
 
