@@ -63,6 +63,13 @@ class Pipeline:
 
         for analyzer in self.analyzers:
 
+            # Skip analyzers configured with IGNORE.
+            action = self.action_policy.get_action(analyzer.name)
+
+            if action == Action.IGNORE:
+                print(f"Skipping analyzer: {analyzer.name}")
+                continue
+
             # -------------------------
             # Check analyzer switch
             # -------------------------

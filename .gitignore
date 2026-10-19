@@ -1,38 +1,74 @@
-# Virtual Environment
-.venv/
-venv/
-env/
 
-# Python cache
+# =========================
+# Python
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
 
-# Pytest
-.pytest_cache/
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+env/
+ENV/
 
-# Generated output
-output/
-
-# IDE / Editor
-.vscode/
-.idea/
-
-# OS files
-.DS_Store
-
-# Environment variables / secrets
+# =========================
+# Environment and secrets
+# =========================
 .env
 .env.*
+!.env.example
 
-# Python packaging
-*.egg-info/
-dist/
-build/
+# =========================
+# Testing and coverage
+# =========================
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.ruff_cache/
 
-# Logs
-*.log
+# =========================
+# IDE and OS
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
 
-# Data
-# Uncomment this if your data/ folder contains large/private datasets
+# =========================
+# Image-only project
+# Exclude tabular module
+# =========================
+app/tabular/
+
+# =========================
+# Local datasets and outputs
+# Keep locally, not in Git
+# =========================
 data/
+uploads/
+
+# =========================
+# Logs and generated models
+# =========================
+*.log
+*.pt
+*.pth
+*.onnx
+*.pkl
+*.pickle
+*.joblib
