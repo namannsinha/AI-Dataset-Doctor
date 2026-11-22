@@ -206,42 +206,6 @@ def main(
             f"{len(stored_image_ids)} images."
         )
 
-        # 10. Visual clustering
-        if clustering_enabled:
-            print("\nRunning visual clustering...\n")
-
-            clustering_analyzer = ClusteringAnalyzer()
-            clustering_result = clustering_analyzer.process_embeddings(
-                embeddings=stored_embeddings,
-                image_ids=stored_image_ids,
-                config=config,
-            )
-            results.append(clustering_result)
-
-            print(
-                f"Configured clusters: {config.num_clusters}"
-            )
-            print(
-                f"Clustering checked "
-                f"{clustering_result.images_checked} images."
-            )
-            print(
-                f"Visual outliers found: "
-                f"{clustering_result.issues_found}"
-            )
-
-            export_clusters(
-                working_dataset=working_dataset,
-                cluster_assignments=(
-                    clustering_analyzer.cluster_assignments
-                ),
-                output_dir=output_path / "clusters",
-            )
-
-            
-        else:
-            print("\nClustering disabled or ignored; skipping.")
-
         # 11. Label validation
         if label_validation_enabled:
             print("\nRunning label validation...\n")
@@ -276,15 +240,69 @@ def main(
                         analyzer_name=label_validation_analyzer.name,
                     )
         else:
-            print("\nLabel validation disabled or ignored; skipping.")
+            print("\nLabel validation disabled; skipping.")
+        
+        # 10. Visual clustering
+        if clustering_enabled:
+            print("\nRunning visual clustering...\n")
+
+            # Get IDs of images still active after label validation.
+            active_image_ids = {
+                image.id
+                for image in working_dataset.iter_images()
+            }
+
+            # Keep embeddings only for active images.
+            active_indices = [
+                index
+                for index, image_id in enumerate(stored_image_ids)
+                if image_id in active_image_ids
+            ]
+
+            active_embeddings = stored_embeddings[active_indices]
+            active_ids = [
+                stored_image_ids[index]
+                for index in active_indices
+            ]
+
+            clustering_analyzer = ClusteringAnalyzer()
+
+            clustering_result = clustering_analyzer.process_embeddings(
+                embeddings=active_embeddings,
+                image_ids=active_ids,
+                config=config,
+            )
+
+            results.append(clustering_result)
+
+            print(f"Configured clusters: {config.num_clusters}")
+            print(
+                f"Clustering checked "
+                f"{clustering_result.images_checked} images."
+            )
+            print(
+                f"Visual outliers found: "
+                f"{clustering_result.issues_found}"
+            )
+
+            export_clusters(
+                working_dataset=working_dataset,
+                cluster_assignments=(
+                    clustering_analyzer.cluster_assignments
+                ),
+                output_dir=output_path / "clusters",
+            )
+
+        else:
+            print("\nClustering disabled; skipping.")
+
     else:
         print(
             "\nSkipping embeddings: clustering and label validation "
-            "are both disabled or ignored."
+            "are both disabled."
         )
 
 
-    # 12. Export remaining active images and report
     clean_dataset_manager.export(working_dataset=working_dataset)
 
     report_writer = ReportWriter()
@@ -293,7 +311,7 @@ def main(
         output_path=str(output_path / "report.json"),
     )
 
-    # 13. Display summary
+
     print("\n" + "=" * 50)
     print("DATASET DOCTOR RESULTS")
     print("=" * 50)

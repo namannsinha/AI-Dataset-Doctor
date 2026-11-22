@@ -407,14 +407,15 @@ with st.container(border=True):
         )
 
 # Analyzer actions
+# Analyzer actions
 with st.container(border=True):
     st.markdown("### 03 · Analyzer actions")
     st.caption(
-        "Choose whether each analyzer should flag findings, "
-        "quarantine affected images, or be skipped."
+        "Choose whether each analyzer should flag findings "
+        "or quarantine affected images."
     )
 
-    action_options = ["Flag", "Quarantine", "Skip"]
+    action_options = ["Flag", "Quarantine"]
 
     action_defaults = {
         "corruption": "Quarantine",
@@ -439,7 +440,6 @@ with st.container(border=True):
         analyzer_actions[name] = {
             "Flag": "flag",
             "Quarantine": "quarantine",
-            "Skip": "ignore",
         }[selected]
 
 # Run button at the bottom of all settings

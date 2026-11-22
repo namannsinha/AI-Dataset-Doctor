@@ -25,6 +25,12 @@ class CleanDatasetManager:
         self,
         working_dataset: WorkingDataset,
     ) -> None:
+        # Clear previous exports to prevent stale files.
+        for item in self.clean_root.iterdir():
+            if item.is_dir():
+                shutil.rmtree(item)
+            else:
+                item.unlink()
 
         for image in working_dataset.iter_images():
 
