@@ -80,6 +80,23 @@ class DatasetConfig(BaseModel):
     num_clusters: int = 2
     cluster_output_dir: str = "clusters"
 
+
+    # =========================
+    # Distribution thresholds
+    # =========================
+
+    min_class_percentage: float = Field(
+        default=5.0,
+        ge=0,
+        le=100,
+    )
+
+    min_cluster_percentage: float = Field(
+        default=5.0,
+        ge=0,
+        le=100,
+)
+
     # =========================
     # Action policy
     # =========================

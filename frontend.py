@@ -10,202 +10,192 @@ st.markdown(
     """
     <style>
     :root {
-        --app-bg: #0b0d0f;
-        --panel-bg: #131714;
-        --card-bg: #151a17;
-        --border: #29352d;
-        --accent: #42d392;
-        --accent-hover: #2bb87c;
-        --accent-soft: rgba(66, 211, 146, 0.12);
-        --amber: #f2b866;
-        --text: #f1f5f2;
-        --muted: #9ba89f;
+        --app-bg: #11100f;
+        --panel-bg: #191715;
+        --panel-raised: #201d1a;
+        --card-bg: #211e1b;
+        --border: #39332d;
+        --border-soft: #2b2723;
+        --accent: #c47a52;
+        --accent-hover: #d28b62;
+        --accent-soft: rgba(196, 122, 82, 0.13);
+        --text: #eee9e2;
+        --muted: #a69b90;
+        --subtle: #766d64;
     }
 
+    * { box-sizing: border-box; }
     .stApp, [data-testid="stMain"] {
         background: var(--app-bg);
         color: var(--text);
     }
-
     [data-testid="stHeader"] {
-        background: rgba(11, 13, 15, 0.92);
+        background: rgba(17, 16, 15, 0.94);
+        border-bottom: 1px solid rgba(255,255,255,0.035);
     }
-
-    /* Keep the workspace centered; controls are in the main page. */
-    [data-testid="stSidebar"] {
-        display: none;
-    }
-
-    .block-container,
-    [data-testid="stMainBlockContainer"] {
-        max-width: 1240px;
+    [data-testid="stSidebar"] { display: none; }
+    .block-container, [data-testid="stMainBlockContainer"] {
+        max-width: 1320px;
         width: 100%;
-        margin-left: auto;
-        margin-right: auto;
-        padding: 2.5rem 2rem 4rem;
+        margin: 0 auto;
+        padding: 3rem 2.5rem 5rem;
         box-sizing: border-box;
     }
-
     h1, h2, h3, h4 {
         color: var(--text) !important;
-        letter-spacing: -0.45px;
+        letter-spacing: -0.035em;
     }
-
-    h1 {
-        font-weight: 800 !important;
-        letter-spacing: -1.4px;
-    }
-
-    h2 { font-weight: 750 !important; }
+    h1 { font-weight: 760 !important; letter-spacing: -0.055em; }
+    h2 { font-weight: 700 !important; }
     h3 { font-weight: 650 !important; }
+    p { color: var(--muted); line-height: 1.65; }
+    [data-testid="stCaptionContainer"] { color: var(--muted); }
 
-    p { color: var(--muted); }
-
-    [data-testid="stCaptionContainer"] {
-        color: var(--muted);
+    /* Gentle page entrance; restrained motion rather than flashy effects. */
+    [data-testid="stMainBlockContainer"] > div {
+        animation: pageReveal 520ms ease both;
+    }
+    @keyframes pageReveal {
+        from { opacity: 0; transform: translateY(9px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Configuration and results panels */
     [data-testid="stVerticalBlockBorderWrapper"] {
         width: 100%;
-        box-sizing: border-box;
-        background: var(--panel-bg);
-        border: 1px solid var(--border) !important;
-        border-radius: 16px !important;
-        padding: 18px 20px;
+        background: linear-gradient(145deg, #1d1a17, #181614);
+        border: 1px solid var(--border-soft) !important;
+        border-radius: 13px !important;
+        padding: 22px 24px;
         margin-bottom: 18px;
-        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.16);
+        transition: border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
     }
-
     [data-testid="stVerticalBlockBorderWrapper"]:hover {
-        border-color: #3b5745 !important;
+        border-color: #665044 !important;
+        transform: translateY(-2px);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.22);
     }
+    hr { border-color: var(--border-soft); }
 
-    hr { border-color: var(--border); }
-
-    /* Form controls */
     [data-testid="stTextInput"] label,
     [data-testid="stNumberInput"] label,
-    [data-testid="stSelectbox"] label {
-        color: #c6d0c9;
-        font-size: 0.9rem;
-        font-weight: 600;
-        white-space: normal;
+    [data-testid="stSelectbox"] label,
+    [data-testid="stCheckbox"] label {
+        color: #d0c7bd;
+        font-size: 0.88rem;
+        font-weight: 580;
     }
-
     [data-testid="stTextInput"] input,
     [data-testid="stNumberInput"] input {
-        background: #0f1310;
+        background: #12110f;
         color: var(--text);
-        border: 1px solid #303a32;
-        border-radius: 10px;
+        border: 1px solid #403931;
+        border-radius: 8px;
+        transition: border-color 180ms ease, box-shadow 180ms ease;
     }
-
-    [data-testid="stSelectbox"] [data-baseweb="select"] {
-        min-width: 0;
-        border-radius: 10px;
+    [data-testid="stTextInput"] input:focus,
+    [data-testid="stNumberInput"] input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent-soft);
     }
-
-    [data-testid="stCheckbox"] label {
+    [data-testid="stSelectbox"] [data-baseweb="select"] { min-width: 0; border-radius: 8px; }
+    [data-baseweb="select"] > div {
+        background: #211e1b;
+        border-color: #403931;
         color: var(--text);
     }
+    [data-testid="stCheckbox"] svg { color: var(--accent); }
 
-    /* Primary and secondary actions */
-    .stButton > button,
-    .stDownloadButton > button {
+    .stButton > button, .stDownloadButton > button {
         min-height: 44px;
-        border-radius: 10px;
+        border-radius: 8px;
         font-weight: 650;
-        transition: all 0.18s ease;
+        transition: background 180ms ease, border-color 180ms ease,
+                    color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
     }
-
     .stButton > button[kind="primary"] {
-        min-height: 56px;
+        min-height: 54px;
         width: 100%;
         background: var(--accent);
         border: 1px solid var(--accent);
-        border-radius: 12px;
-        color: #07130c;
-        font-size: 1rem;
-        font-weight: 800;
-        letter-spacing: 0.15px;
-        box-shadow: 0 6px 22px rgba(66, 211, 146, 0.12);
+        border-radius: 9px;
+        color: #17110d;
+        font-size: 0.98rem;
+        font-weight: 750;
+        letter-spacing: 0.01em;
+        box-shadow: 0 7px 20px rgba(196,122,82,0.14);
     }
-
     .stButton > button[kind="primary"]:hover {
         background: var(--accent-hover);
         border-color: var(--accent-hover);
-        color: #ffffff;
-        transform: translateY(-1px);
-        box-shadow: 0 8px 25px rgba(66, 211, 146, 0.2);
+        color: #17110d;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(196,122,82,0.2);
     }
-
+    .stButton > button:active, .stDownloadButton > button:active { transform: translateY(0); }
     .stDownloadButton > button {
-        background: var(--card-bg);
+        background: var(--panel-raised);
         border: 1px solid var(--border);
         color: var(--text);
     }
-
     .stDownloadButton > button:hover {
         border-color: var(--accent);
-        color: var(--accent);
+        color: var(--accent-hover);
+        transform: translateY(-1px);
     }
 
-    /* Result metrics */
     [data-testid="stMetric"] {
-        background: linear-gradient(145deg, #171e19, #111512);
-        border: 1px solid var(--border);
-        border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+        background: linear-gradient(145deg, #24201c, #1b1916);
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        padding: 19px 20px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.13);
+        transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+        animation: metricReveal 450ms ease both;
     }
-
-    [data-testid="stMetricLabel"] {
-        color: var(--muted);
-        font-size: 0.9rem;
+    [data-testid="stMetric"]:hover {
+        transform: translateY(-3px);
+        border-color: #665044;
+        box-shadow: 0 12px 26px rgba(0,0,0,0.2);
     }
-
-    [data-testid="stMetricValue"] {
-        color: var(--accent);
-        font-weight: 800;
+    @keyframes metricReveal {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-
+    [data-testid="stMetricLabel"] { color: var(--muted); font-size: 0.88rem; }
+    [data-testid="stMetricValue"] { color: #e0a17c; font-weight: 760; letter-spacing: -0.035em; }
     [data-testid="stDataFrame"] {
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 9px;
         overflow: hidden;
     }
-
-    [data-testid="stProgressBar"] > div > div {
-        background: var(--accent);
-    }
-
     [data-testid="stAlert"] {
-        border-radius: 12px;
+        border-radius: 9px;
         border: 1px solid var(--border);
+        background: #211e1a;
+        color: var(--text);
     }
-
+    [data-testid="stAlert"] p { color: var(--text); }
     [data-testid="stExpander"] {
         background: var(--panel-bg);
         border: 1px solid var(--border);
-        border-radius: 12px;
+        border-radius: 9px;
     }
+    [data-testid="stProgressBar"] > div > div { background: var(--accent); }
+    ::selection { background: rgba(196,122,82,0.3); color: #fff; }
 
-    ::selection {
-        background: rgba(66, 211, 146, 0.3);
-        color: #ffffff;
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+        }
     }
-
     @media (max-width: 768px) {
-        .block-container,
-        [data-testid="stMainBlockContainer"] {
-            padding: 1.25rem 1rem 2.5rem;
+        .block-container, [data-testid="stMainBlockContainer"] {
+            padding: 1.4rem 1rem 2.5rem;
         }
-
-        [data-testid="stVerticalBlockBorderWrapper"] {
-            padding: 14px;
-        }
-
+        [data-testid="stVerticalBlockBorderWrapper"] { padding: 15px; }
         h1 { font-size: 2rem !important; }
     }
     </style>
@@ -221,7 +211,7 @@ with header_left:
         """
         <div style="padding-bottom: 18px;">
             <div style="
-                color: #42d392;
+                color: #c47a52;
                 font-size: 12px;
                 font-weight: 700;
                 letter-spacing: 2px;
@@ -233,12 +223,12 @@ with header_left:
             <h1 style="
                 margin: 0;
                 font-size: 2.5rem;
-                color: #f1f5f2;
+                color: #eee9e2;
             ">
                 AI Dataset Doctor
             </h1>
             <p style="
-                color: #9ba89f;
+                color: #a69b90;
                 font-size: 1rem;
                 margin-top: 10px;
             ">
@@ -256,11 +246,11 @@ with header_right:
         <div style="
             margin-top: 26px;
             padding: 10px 12px;
-            border: 1px solid #29352d;
+            border: 1px solid #39332d;
             border-radius: 10px;
             text-align: center;
-            background: #151a17;
-            color: #c6d0c9;
+            background: #211e1b;
+            color: #d0c7bd;
             font-size: 12px;
             font-weight: 600;
         ">
@@ -281,8 +271,8 @@ st.markdown(
         flex-wrap:wrap;
         margin:8px 0 30px;
         padding:13px 16px;
-        background:linear-gradient(100deg,#121914,#101310);
-        border:1px solid #29352d;
+        background:linear-gradient(100deg,#211e1b,#191715);
+        border:1px solid #39332d;
         border-radius:12px;
     ">
         <span style="
@@ -291,14 +281,14 @@ st.markdown(
             height:9px;
             flex-shrink:0;
             border-radius:50%;
-            background:#42d392;
-            box-shadow:0 0 12px rgba(66,211,146,.45);
+            background:#c47a52;
+            box-shadow:0 0 12px rgba(196,122,82,.45);
         "></span>
-        <span style="color:#dce8df;font-weight:650;">
+        <span style="color:#eee9e2;font-weight:650;">
             Dataset Quality Workspace
         </span>
-        <span style="color:#738078;">·</span>
-        <span style="color:#9ba89f;font-size:13px;">
+        <span style="color:#766d64;">·</span>
+        <span style="color:#a69b90;font-size:13px;">
             Image integrity · Resolution · Blur · Duplicates · Visual analysis
         </span>
     </div>
@@ -314,14 +304,14 @@ st.markdown(
 st.markdown(
     """
     <div style="margin: 10px 0 18px;">
-        <div style="color:#42d392;font-size:12px;
+        <div style="color:#c47a52;font-size:12px;
                     font-weight:700;letter-spacing:1.8px;">
             WORKSPACE CONFIGURATION
         </div>
-        <h2 style="margin:6px 0;color:#f1f5f2;">
+        <h2 style="margin:6px 0;color:#eee9e2;">
             Configure your analysis
         </h2>
-        <p style="margin:0;color:#9ba89f;">
+        <p style="margin:0;color:#a69b90;">
             Select your dataset, set quality thresholds, and choose
             how each analyzer should handle detected issues.
         </p>
@@ -573,6 +563,149 @@ if report_path_value:
             )
         else:
             st.success("No findings to classify by severity.")
+
+        # ---------------------------------------------------------
+        # Class distribution and label imbalance
+        # ---------------------------------------------------------
+        st.subheader("Class Distribution & Label Imbalance")
+
+        class_result = next(
+            (
+                item for item in analyzers
+                if item.get("analyzer") == "class_distribution"
+            ),
+            None,
+        )
+
+        if class_result is None:
+            st.warning(
+                "Class distribution results were not found in this report. "
+                "Run the analysis again with the latest backend."
+            )
+        else:
+            class_stats = class_result.get("statistics") or {}
+            class_status = str(class_stats.get("status", "")).lower()
+
+            if class_status in {"not_applicable", "not applicable", "skipped"}:
+                st.info(
+                    "Label imbalance analysis is not applicable because "
+                    "the dataset does not contain usable class labels."
+                )
+            else:
+                # Some reports store counts directly; others group them by split.
+                split_stats = class_stats.get("splits")
+                if not isinstance(split_stats, dict) or not split_stats:
+                    split_stats = {
+                        "Dataset": class_stats,
+                    }
+
+                rendered_distribution = False
+
+                for split_name, split_data in split_stats.items():
+                    if not isinstance(split_data, dict):
+                        continue
+
+                    # Accept the analyzer's class-count mapping. The aliases
+                    # make the dashboard tolerant of small report schema changes.
+                    counts = (
+                        split_data.get("class_counts")
+                        or split_data.get("class_distribution")
+                        or split_data.get("classes")
+                    )
+
+                    if not isinstance(counts, dict) or not counts:
+                        continue
+
+                    numeric_counts = {}
+                    for label, count in counts.items():
+                        try:
+                            numeric_counts[str(label)] = int(count)
+                        except (TypeError, ValueError):
+                            continue
+
+                    if not numeric_counts:
+                        continue
+
+                    rendered_distribution = True
+                    total_labeled = sum(numeric_counts.values())
+                    percentages = split_data.get("class_percentages", {})
+
+                    st.markdown(f"#### {str(split_name).replace('_', ' ').title()}")
+
+                    metric_cols = st.columns(3)
+                    metric_cols[0].metric("Labeled images", f"{total_labeled:,}")
+                    metric_cols[1].metric("Classes", f"{len(numeric_counts):,}")
+
+                    imbalance_ratio = split_data.get("imbalance_ratio")
+                    if imbalance_ratio is not None:
+                        metric_cols[2].metric(
+                            "Imbalance ratio",
+                            f"{imbalance_ratio}:1" if isinstance(imbalance_ratio, (int, float)) else str(imbalance_ratio),
+                        )
+                    else:
+                        metric_cols[2].metric("Imbalance ratio", "Not provided")
+
+                    rows = []
+                    for label, count in sorted(
+                        numeric_counts.items(),
+                        key=lambda pair: pair[1],
+                        reverse=True,
+                    ):
+                        percentage = percentages.get(label) if isinstance(percentages, dict) else None
+                        if percentage is None:
+                            percentage = (count / total_labeled * 100) if total_labeled else 0
+                        rows.append({
+                            "Class": label,
+                            "Images": count,
+                            "Percentage": f"{float(percentage):.2f}%",
+                        })
+
+                    distribution_df = pd.DataFrame(rows)
+                    st.dataframe(
+                        distribution_df,
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                    st.bar_chart(
+                        pd.DataFrame(
+                            {"Images": numeric_counts}
+                        ).sort_values("Images", ascending=False)
+                    )
+
+                    underrepresented = split_data.get("underrepresented_classes", [])
+                    if underrepresented:
+                        st.warning(
+                            "Underrepresented classes: "
+                            + ", ".join(str(label) for label in underrepresented)
+                        )
+                    else:
+                        st.caption(
+                            "No underrepresented classes were reported "
+                            "for this split, or the analyzer did not provide that field."
+                        )
+
+                if not rendered_distribution:
+                    labeled_images = class_stats.get("labeled_images")
+                    unlabeled_images = class_stats.get("unlabeled_images")
+
+                    if labeled_images is not None or unlabeled_images is not None:
+                        metric_cols = st.columns(2)
+                        metric_cols[0].metric(
+                            "Labeled images",
+                            f"{int(labeled_images or 0):,}",
+                        )
+                        metric_cols[1].metric(
+                            "Unlabeled images",
+                            f"{int(unlabeled_images or 0):,}",
+                        )
+
+                    st.info(
+                        "The report contains class-distribution statistics, "
+                        "but no recognized per-class count mapping was found. "
+                        "The raw statistics are available below for inspection."
+                    )
+                    with st.expander("View raw class distribution statistics"):
+                        st.json(class_stats)
 
         st.subheader("Results by analyzer")
         st.dataframe(

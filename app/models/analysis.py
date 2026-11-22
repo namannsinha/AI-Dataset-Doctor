@@ -15,6 +15,9 @@ class AnalysisResult(BaseModel):
     cluster_assignments: dict[str, int] = Field(
         default_factory=dict
     )
+    statistics: dict = Field(
+        default_factory=dict
+    )
 
     @property
     def issues_found(self) -> int:

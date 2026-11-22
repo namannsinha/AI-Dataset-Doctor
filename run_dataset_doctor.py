@@ -6,6 +6,8 @@ from app.analyzers.clustering import ClusteringAnalyzer
 from app.analyzers.corruption import CorruptionAnalyzer
 from app.analyzers.duplicate import DuplicateAnalyzer
 from app.analyzers.label_validation import LabelValidationAnalyzer
+from app.analyzers.class_distribution import ClassDistributionAnalyzer
+from app.analyzers.cluster_distribution import ClusterDistributionAnalyzer
 from app.analyzers.resolution import ResolutionAnalyzer
 from app.clean.clean_dataset_manager import CleanDatasetManager
 from app.core.action_policy import ActionPolicy
@@ -17,6 +19,7 @@ from app.models import Action, DatasetConfig
 from app.parsers.folder_parser import FolderParser
 from app.quarantine.quarantine_manager import QuarantineManager
 from app.reports.report_writer import ReportWriter
+
 
 
 def export_clusters(
@@ -178,7 +181,6 @@ def main(
 
     print("\nRunning Dataset Doctor...\n")
     results = pipeline.run()
-    
     # 9. Run embedding-dependent analyzers only when needed.
     clustering_enabled = config.enable_clustering
 
@@ -243,7 +245,7 @@ def main(
                     )
         else:
             print("\nLabel validation disabled; skipping.")
-        
+
         # 10. Visual clustering
         if clustering_enabled:
             print("\nRunning visual clustering...\n")
@@ -268,6 +270,9 @@ def main(
             ]
 
             clustering_analyzer = ClusteringAnalyzer()
+            cluster_distribution_analyzer = (
+                ClusterDistributionAnalyzer()
+            )
 
             clustering_result = clustering_analyzer.process_embeddings(
                 embeddings=active_embeddings,
@@ -276,6 +281,30 @@ def main(
             )
 
             results.append(clustering_result)
+
+            # Export clusters before analyzing their distribution.
+            cluster_output_dir = output_path / "clusters"
+
+            export_clusters(
+                working_dataset=working_dataset,
+                cluster_assignments=clustering_analyzer.cluster_assignments,
+                output_dir=cluster_output_dir,
+            )
+
+            # Analyze the actual files in the exported cluster folders.
+            print("\nAnalyzing cluster distribution...\n")
+
+            cluster_distribution_result = (
+                cluster_distribution_analyzer.analyze_cluster_folders(
+                    cluster_output_dir=cluster_output_dir,
+                    config=config,
+                )
+            )
+
+            results.append(cluster_distribution_result)
+
+            print("Cluster distribution analysis completed.")
+            print(cluster_distribution_result.statistics)
 
             print(f"Configured clusters: {config.num_clusters}")
             print(
@@ -287,14 +316,6 @@ def main(
                 f"{clustering_result.issues_found}"
             )
 
-            export_clusters(
-                working_dataset=working_dataset,
-                cluster_assignments=(
-                    clustering_analyzer.cluster_assignments
-                ),
-                output_dir=output_path / "clusters",
-            )
-
         else:
             print("\nClustering disabled; skipping.")
 
@@ -304,6 +325,18 @@ def main(
             "are both disabled."
         )
 
+
+    # Analyze semantic class-label distribution after all quarantine actions.
+    print("\nRunning class distribution analysis...\n")
+
+    class_distribution_analyzer = ClassDistributionAnalyzer()
+    class_distribution_result = class_distribution_analyzer.analyze(
+        working_dataset=working_dataset,
+        config=config,
+    )
+    results.append(class_distribution_result)
+
+    print(class_distribution_result.statistics)
 
     clean_dataset_manager.export(working_dataset=working_dataset)
 
