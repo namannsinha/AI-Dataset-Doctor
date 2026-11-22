@@ -96,6 +96,8 @@ def main(
     parser = FolderParser()
     dataset = parser.parse(str(dataset_path))
 
+    original_image_count = len(dataset.images)
+
     print(f"Dataset loaded: {dataset.name}")
     print(f"Images found: {len(dataset.images)}")
 
@@ -305,10 +307,37 @@ def main(
 
     clean_dataset_manager.export(working_dataset=working_dataset)
 
+    active_image_count = working_dataset.total_images
+
+    quarantined_image_count = (
+        original_image_count - active_image_count
+    )
+
+    all_findings = [
+        finding
+        for result in results
+        for finding in result.findings
+    ]
+
+    unique_affected_images = len({
+        finding.image_id
+        for finding in all_findings
+    })
+
+    summary = {
+        "total_images": original_image_count,
+        "active_images": active_image_count,
+        "quarantined_images": quarantined_image_count,
+        "total_findings": len(all_findings),
+        "unique_affected_images": unique_affected_images,
+    }
+
     report_writer = ReportWriter()
+
     report_writer.write_json(
         results=results,
         output_path=str(output_path / "report.json"),
+        summary=summary,
     )
 
 

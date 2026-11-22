@@ -407,7 +407,6 @@ with st.container(border=True):
         )
 
 # Analyzer actions
-# Analyzer actions
 with st.container(border=True):
     st.markdown("### 03 · Analyzer actions")
     st.caption(
@@ -485,6 +484,9 @@ if run_analysis:
             st.session_state["report_path"] = str(
                 output_dir / "report.json"
             )
+            st.session_state["dataset_root"] = str(
+                input_dir.resolve()
+            )
             st.success("Analysis completed successfully.")
 
         except Exception as exc:
@@ -499,24 +501,34 @@ if report_path_value:
         with report_path.open("r", encoding="utf-8") as file:
             report = json.load(file)
 
+        
         analyzers = report.get("analyzers", [])
-        total_checked = max(
-            (item.get("images_checked", 0) for item in analyzers),
-            default=0,
-        )
-        total_findings = sum(
-            len(item.get("findings", []))
-            for item in analyzers
-        )
+        run_summary = report.get("summary", {})
+
+        # Use the run-level summary from the backend.
+        total_images = run_summary.get("total_images", 0)
+        active_images = run_summary.get("active_images", 0)
+        quarantined_images = run_summary.get("quarantined_images", 0)
+        total_findings = run_summary.get("total_findings", 0)
+        unique_affected = run_summary.get("unique_affected_images", 0)
 
         st.subheader("Analysis overview")
 
+        # First row: dataset status
         col1, col2, col3 = st.columns(3)
-        col1.metric("Images analyzed", total_checked)
-        col2.metric("Total findings", total_findings)
+
+        col1.metric("Total images", f"{total_images:,}")
+        col2.metric("Active images", f"{active_images:,}")
+        col3.metric("Quarantined images", f"{quarantined_images:,}")
+
+        # Second row: findings
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Total findings", f"{total_findings:,}")
+        col2.metric("Unique affected images", f"{unique_affected:,}")
         col3.metric("Analyzers completed", len(analyzers))
 
-        st.subheader("Results by analyzer")
+        st.subheader("Finding severity")
 
         summary_rows = []
         finding_rows = []
@@ -536,10 +548,33 @@ if report_path_value:
                     "Analyzer": analyzer_name.replace("_", " ").title(),
                     "Image": finding.get("image_id", ""),
                     "Issue": finding.get("issue_type", ""),
-                    "Severity": finding.get("severity", ""),
+                    "Severity": finding.get("severity", "unknown").title(),
                     "Reason": finding.get("reason", ""),
                 })
 
+        severity_counts = {}
+
+        for finding in finding_rows:
+            severity = finding["Severity"]
+            severity_counts[severity] = severity_counts.get(severity, 0) + 1
+
+        severity_df = pd.DataFrame(
+            [
+                {"Severity": severity, "Findings": count}
+                for severity, count in severity_counts.items()
+            ]
+        )
+
+        if not severity_df.empty:
+            st.dataframe(
+                severity_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.success("No findings to classify by severity.")
+
+        st.subheader("Results by analyzer")
         st.dataframe(
             pd.DataFrame(summary_rows),
             use_container_width=True,
@@ -566,6 +601,78 @@ if report_path_value:
                 use_container_width=True,
                 hide_index=True,
             )
+
+            # Inspect one finding at a time to avoid loading
+            # hundreds of image previews simultaneously.
+            st.subheader("Finding inspection")
+
+            inspection_index = st.selectbox(
+                "Select a finding to inspect",
+                options=range(len(findings_df)),
+                format_func=lambda index: (
+                    f"{findings_df.iloc[index]['Analyzer']} | "
+                    f"{findings_df.iloc[index]['Image']} | "
+                    f"{findings_df.iloc[index]['Issue']}"
+                ),
+                key="finding_inspection",
+            )
+
+            selected_finding = findings_df.iloc[inspection_index]
+
+            detail_col, preview_col = st.columns([1, 1])
+
+            with detail_col:
+                st.markdown("**Finding details**")
+                st.write("Image:", selected_finding["Image"])
+                st.write("Analyzer:", selected_finding["Analyzer"])
+                st.write("Issue:", selected_finding["Issue"])
+                st.write("Severity:", selected_finding["Severity"])
+                st.write("Reason:", selected_finding["Reason"])
+
+            with preview_col:
+                st.markdown("**Original image preview**")
+
+                dataset_root_value = st.session_state.get("dataset_root")
+
+                if not dataset_root_value:
+                    st.warning(
+                        "Dataset location is unavailable. "
+                        "Run the analysis again to enable image previews."
+                    )
+                else:
+                    dataset_root = Path(dataset_root_value).resolve()
+                    relative_path = Path(str(selected_finding["Image"]))
+
+                    if (
+                        relative_path.is_absolute()
+                        or ".." in relative_path.parts
+                    ):
+                        st.error("Invalid image path in the report.")
+                    else:
+                        image_path = (
+                            dataset_root / relative_path
+                        ).resolve()
+
+                        if not image_path.is_relative_to(dataset_root):
+                            st.error(
+                                "The image path points outside the dataset."
+                            )
+                        elif not image_path.is_file():
+                            st.warning(
+                                "The original image could not be found."
+                            )
+                        else:
+                            try:
+                                st.image(
+                                    str(image_path),
+                                    use_container_width=True,
+                                )
+                            except Exception:
+                                st.error(
+                                    "This image cannot be displayed. "
+                                    "It may be corrupted or unreadable."
+                                )
+
         else:
             st.success("No findings were reported.")
 

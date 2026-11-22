@@ -1,3 +1,4 @@
+
 import json
 from pathlib import Path
 
@@ -10,6 +11,7 @@ class ReportWriter:
         self,
         results: list[AnalysisResult],
         output_path: str,
+        summary: dict[str, int],
     ) -> None:
 
         path = Path(output_path)
@@ -20,12 +22,11 @@ class ReportWriter:
         )
 
         report = {
+            "summary": summary,
             "analyzers": [
-                result.model_dump(
-                    mode="json"
-                )
+                result.model_dump(mode="json")
                 for result in results
-            ]
+            ],
         }
 
         with path.open(
